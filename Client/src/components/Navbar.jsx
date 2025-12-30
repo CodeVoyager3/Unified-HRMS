@@ -6,7 +6,7 @@ const Navbar = () => {
     const [language, setLanguage] = useState('English');
 
     return (
-        <nav className="w-full relative shadow-md font-sans" role="navigation" aria-label="Main Navigation">
+        <nav className="w-full relative shadow-md z-50 fixed top-0 left-0 right-0    font-sans" role="navigation" aria-label="Main Navigation">
             {/* Top Bar - GIGW Compliant */}
             <div className="bg-[#6F42C1] text-white px-4 py-1.5 flex justify-between items-center text-xs md:text-sm">
                 <div className="flex items-center gap-2">
