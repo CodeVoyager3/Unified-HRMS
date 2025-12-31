@@ -100,13 +100,13 @@ const Navbar = () => {
 
                 {/* Desktop Nav - Focused on "Online Services" */}
                 <div className="hidden lg:flex items-center gap-6 xl:gap-8 font-medium text-gray-700 dark:text-gray-200 text-sm xl:text-base">
-                    <NavLink to="/notices" className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors py-1">{t.publicNotices}</NavLink>
+                    <NavLink to="/notices" className={({ isActive }) => `transition-colors py-1 border-b-2 ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] border-[#6F42C1] dark:border-[#a074f0] font-semibold' : 'border-transparent hover:text-[#6F42C1] dark:hover:text-[#a074f0]'}`}>{t.publicNotices}</NavLink>
                     <button className="group flex items-center gap-1 hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors cursor-pointer py-1">
                         <span>{t.onlineServices}</span>
                         <ChevronDown size={16} className="group-hover:rotate-180 transition-transform duration-200" />
                     </button>
                     <div onClick={handleEmployeeCornerClick} className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors py-1 cursor-pointer">{t.employeeCorner}</div>
-                    <NavLink to="/about-us" className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors border-b-2 border-transparent hover:border-[#6F42C1] dark:hover:border-[#a074f0] py-1">{t.aboutUs}</NavLink>
+                    <NavLink to="/about-us" className={({ isActive }) => `transition-colors py-1 border-b-2 ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] border-[#6F42C1] dark:border-[#a074f0] font-semibold' : 'border-transparent hover:text-[#6F42C1] dark:hover:text-[#a074f0] hover:border-[#6F42C1] dark:hover:border-[#a074f0]'}`}>{t.aboutUs}</NavLink>
                 </div>
 
                 {/* Actions - Grouped for Clarity */}
@@ -157,9 +157,9 @@ const Navbar = () => {
                         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
                     <a href="" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between">{t.onlineServices} <ChevronDown size={16} /></a>
-                    <NavLink to="/notices" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800">{t.publicNotices}</NavLink>
+                    <NavLink to="/notices" className={({ isActive }) => `font-medium py-3 border-b border-gray-50 dark:border-gray-800 ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] bg-purple-50 dark:bg-purple-900/20 pl-2 rounded-r' : ''}`}>{t.publicNotices}</NavLink>
                     <div onClick={handleEmployeeCornerClick} className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between cursor-pointer">{t.employeeCorner} <ChevronDown size={16} /></div>
-                    <NavLink to="/about-us" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 hover:pl-2 transition-all">{t.aboutUs}</NavLink>
+                    <NavLink to="/about-us" className={({ isActive }) => `font-medium py-3 border-b border-gray-50 dark:border-gray-800 transition-all ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] bg-purple-50 dark:bg-purple-900/20 pl-2 rounded-r' : 'hover:pl-2'}`}>{t.aboutUs}</NavLink>
                     <div className="flex flex-col gap-3 mt-4">
                         <SignedIn>
                             <div className="flex justify-start px-2">
