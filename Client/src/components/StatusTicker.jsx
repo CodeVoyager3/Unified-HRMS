@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Bell, ExternalLink, Megaphone } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { NavLink } from 'react-router-dom';
 
 const StatusTicker = () => {
     const { t } = useLanguage();
@@ -54,9 +55,9 @@ const StatusTicker = () => {
             </div>
 
             {/* Accessibility Link */}
-            <button className="flex-shrink-0 px-4 text-[#6F42C1] dark:text-[#a074f0] hover:underline text-xs font-bold border-l border-purple-200 dark:border-gray-700 hidden md:block">
+            <NavLink to={'/notices'} className="flex-shrink-0 px-4 text-[#6F42C1] dark:text-[#a074f0] hover:underline text-xs font-bold border-l border-purple-200 dark:border-gray-700 hidden md:block">
                 {t.viewAll}
-            </button>
+            </NavLink>
         </div>
     );
 };

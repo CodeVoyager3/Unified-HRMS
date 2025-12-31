@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Search, ChevronDown, Moon, Sun, Accessibility, Menu, X, Languages } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react';
+import { useNavigate, NavLink } from 'react-router-dom'
 
 const Navbar = () => {
+    const navigate = useNavigate();
+    const { user, isSignedIn } = useUser();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { language, toggleLanguage, t } = useLanguage();
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
@@ -19,6 +23,18 @@ const Navbar = () => {
 
     const toggleTheme = () => {
         setTheme(theme === 'dark' ? 'light' : 'dark');
+    };
+
+    const handleEmployeeCornerClick = () => {
+        if (!isSignedIn) {
+            // Trigger login or show alert
+            return;
+        }
+
+        const role = user.publicMetadata.role;
+        if (role === 'admin') navigate('/admin');
+        else if (role === 'manager') navigate('/manager');
+        else navigate('/dashboard');
     };
 
     return (
@@ -74,7 +90,7 @@ const Navbar = () => {
                 <div className="flex items-center gap-3 md:gap-5">
                     <img src="/embelem.png" alt="State Emblem of India" className="h-10 md:h-14 object-contain brightness-100 dark:brightness-100" />
                     <div className="h-8 md:h-10 w-[1px] bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
-                    <div className="flex flex-col">
+                    <div onClick={() => navigate('/')} className="cursor-pointer flex flex-col">
                         <img src="/logo.png" alt="MCD Logo" className="h-8 md:h-10 object-contain" />
                         <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 hidden md:block">नगर निगम दिल्ली</span>
                     </div>
@@ -82,16 +98,13 @@ const Navbar = () => {
 
                 {/* Desktop Nav - Focused on "Online Services" */}
                 <div className="hidden lg:flex items-center gap-6 xl:gap-8 font-medium text-gray-700 dark:text-gray-200 text-sm xl:text-base">
-                    <a href="#" className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors border-b-2 border-transparent hover:border-[#6F42C1] dark:hover:border-[#a074f0] py-1">{t.aboutUs}</a>
+                    <NavLink to="/notices" className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors py-1">{t.publicNotices}</NavLink>
                     <button className="group flex items-center gap-1 hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors cursor-pointer py-1">
                         <span>{t.onlineServices}</span>
                         <ChevronDown size={16} className="group-hover:rotate-180 transition-transform duration-200" />
                     </button>
-                    <a href="#" className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors py-1">{t.publicNotices}</a>
-                    <button className="group flex items-center gap-1 hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors cursor-pointer py-1">
-                        <span>{t.employeeCorner}</span>
-                        <ChevronDown size={16} className="group-hover:rotate-180 transition-transform duration-200" />
-                    </button>
+                    <div onClick={handleEmployeeCornerClick} className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors py-1 cursor-pointer">{t.employeeCorner}</div>
+                    <NavLink to="/about-us" className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors border-b-2 border-transparent hover:border-[#6F42C1] dark:hover:border-[#a074f0] py-1">{t.aboutUs}</NavLink>
                 </div>
 
                 {/* Actions - Grouped for Clarity */}
@@ -104,12 +117,21 @@ const Navbar = () => {
                         />
                         <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                     </div>
-                    <button className="px-5 py-2 border border-[#6F42C1] text-[#6F42C1] dark:border-[#a074f0] dark:text-[#a074f0] rounded-lg font-semibold text-sm hover:bg-purple-50 dark:hover:bg-opacity-10 transition-colors">
-                        {t.login}
-                    </button>
-                    <button className="px-5 py-2 bg-[#6F42C1] dark:bg-[#5a32a3] text-white rounded-lg font-semibold text-sm hover:bg-[#5a32a3] dark:hover:bg-[#4a2885] transition-colors shadow-md">
-                        {t.signup}
-                    </button>
+                    <SignedIn>
+                        <UserButton />
+                    </SignedIn>
+                    <SignedOut>
+                        <SignInButton mode="modal">
+                            <button className="cursor-pointer px-5 py-2 border border-[#6F42C1] text-[#6F42C1] dark:border-[#a074f0] dark:text-[#a074f0] rounded-lg font-semibold text-sm hover:bg-purple-50 dark:hover:bg-opacity-10 transition-colors">
+                                {t.login}
+                            </button>
+                        </SignInButton>
+                        <SignUpButton mode="modal">
+                            <button className="cursor-pointer px-5 py-2 bg-[#6F42C1] dark:bg-[#5a32a3] text-white rounded-lg font-semibold text-sm hover:bg-[#5a32a3] dark:hover:bg-[#4a2885] transition-colors shadow-md">
+                                {t.signup}
+                            </button>
+                        </SignUpButton>
+                    </SignedOut>
                 </div>
 
                 {/* Mobile Menu Button */}
@@ -132,14 +154,29 @@ const Navbar = () => {
                         <input type="text" placeholder={t.searchPlaceholder} className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg focus:outline-none border dark:border-gray-700 dark:text-white" />
                         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     </div>
-                    <a href="#" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 hover:pl-2 transition-all">{t.aboutUs}</a>
-                    <a href="#" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between">{t.onlineServices} <ChevronDown size={16} /></a>
-                    <a href="#" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800">{t.publicNotices}</a>
-                    <a href="#" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between">{t.employeeCorner} <ChevronDown size={16} /></a>
+                    <a href="" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between">{t.onlineServices} <ChevronDown size={16} /></a>
+                    <NavLink to="/notices" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800">{t.publicNotices}</NavLink>
+                    <div onClick={handleEmployeeCornerClick} className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between cursor-pointer">{t.employeeCorner} <ChevronDown size={16} /></div>
+                    <NavLink to="/about-us" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 hover:pl-2 transition-all">{t.aboutUs}</NavLink>
 
                     <div className="flex flex-col gap-3 mt-4">
-                        <button className="w-full py-3 border border-[#6F42C1] text-[#6F42C1] dark:border-[#a074f0] dark:text-[#a074f0] rounded-lg font-bold">{t.login}</button>
-                        <button className="w-full py-3 bg-[#6F42C1] dark:bg-[#5a32a3] text-white rounded-lg font-bold">{t.signup}</button>
+                        <SignedIn>
+                            <div className="flex justify-start px-2">
+                                <UserButton />
+                            </div>
+                        </SignedIn>
+                        <SignedOut>
+                            <SignInButton mode="modal">
+                                <button className="w-full cursor-pointer py-3 border border-[#6F42C1] text-[#6F42C1] dark:border-[#a074f0] dark:text-[#a074f0] rounded-lg font-bold">
+                                    {t.login}
+                                </button>
+                            </SignInButton>
+                            <SignUpButton mode="modal">
+                                <button className="w-full cursor-pointer py-3 bg-[#6F42C1] dark:bg-[#5a32a3] text-white rounded-lg font-bold">
+                                    {t.signup}
+                                </button>
+                            </SignUpButton>
+                        </SignedOut>
                     </div>
                 </div>
             )}

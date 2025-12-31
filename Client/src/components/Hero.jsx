@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { NavLink } from 'react-router-dom';
 
 const Hero = () => {
     const { t } = useLanguage();
@@ -70,6 +71,7 @@ const Hero = () => {
             <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 pt-16 md:pt-24 flex flex-col items-center text-center">
 
                 {/* Upcoming Events Tag - Content updated for MCD */}
+                <NavLink to={'/notices'}>
                 <div className="mb-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-200 bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800 text-[#6F42C1] dark:text-purple-300 text-sm font-medium hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors cursor-pointer">
                     <span className="flex items-center gap-2">
                         <span className="relative flex h-2 w-2">
@@ -80,6 +82,7 @@ const Hero = () => {
                     </span>
                     <ArrowUpRight size={14} />
                 </div>
+                </NavLink>
 
                 {/* Main Heading - Content updated for MCD HRMS */}
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-gray-900 dark:text-white mb-6 leading-tight transition-colors">
