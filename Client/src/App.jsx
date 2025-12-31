@@ -8,6 +8,7 @@ import Opportunities from './pages/Opportunities'
 import AboutUs from './pages/AboutUs'
 import ProtectedRoute from './components/ProtectedRoute'
 import Notices from './pages/Notices'
+import EmployeeDashboard from './pages/EmployeeDashboard'
 
 import SyncUser from './components/SyncUser'
 
@@ -22,7 +23,8 @@ function App() {
           <Route path="/admin" element={<ProtectedRoute> <AdminDashboard /> </ProtectedRoute>} />
           <Route path="/manager" element={<ProtectedRoute> <ManagerDashboard /> </ProtectedRoute>} />
           <Route path="/opportunities" element={<ProtectedRoute> <Opportunities /> </ProtectedRoute>} />
-          <Route path="/notices" element={<ProtectedRoute> <Notices /> </ProtectedRoute>} />
+          <Route path="/employee" element={<ProtectedRoute> <EmployeeDashboard /> </ProtectedRoute>} />
+          <Route path="/notices" element={<Notices />} />
           <Route path="/about-us" element={<AboutUs />} />
         </Routes>
       </BrowserRouter>

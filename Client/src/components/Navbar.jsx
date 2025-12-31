@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Search, ChevronDown, Moon, Sun, Accessibility, Menu, X, Languages } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate, NavLink } from 'react-router-dom'
 
 const Navbar = () => {
     const navigate = useNavigate();
     const { user, isSignedIn } = useUser();
+    const { openSignIn } = useClerk();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { language, toggleLanguage, t } = useLanguage();
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
@@ -27,13 +28,14 @@ const Navbar = () => {
 
     const handleEmployeeCornerClick = () => {
         if (!isSignedIn) {
-            // Trigger login or show alert
+            openSignIn();
             return;
         }
 
         const role = user.publicMetadata.role;
         if (role === 'admin') navigate('/admin');
         else if (role === 'manager') navigate('/manager');
+        else if (role === 'employee') navigate('/employee');
         else navigate('/dashboard');
     };
 

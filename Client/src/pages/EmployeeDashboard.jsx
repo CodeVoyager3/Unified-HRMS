@@ -1,13 +1,12 @@
 import React from 'react'
 import Navbar from '../components/Navbar'
 
-const Notices = () => {
+const EmployeeDashboard = () => {
   return (
     <>
     <Navbar />
-    <div>Notices</div>
+    <div>EmployeeDashboard</div>
     </>
-  )
-}
+)}
 
-export default Notices
+export default EmployeeDashboard
