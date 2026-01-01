@@ -185,7 +185,7 @@ const AdminDashboard = () => {
 
       <div className="flex">
         {/* Sidebar - Static */}
-        <aside className="w-64 bg-[#1e1b4b] dark:bg-[#0f0d24] h-[calc(100vh-120px)] sticky top-[120px] transition-all duration-300 hidden lg:block overflow-y-auto custom-scrollbar">
+        <aside className="w-64 bg-[#1e1b4b] dark:bg-[#0f0d24] h-[calc(100vh-104px)] sticky top-[104px] transition-all duration-300 hidden lg:block overflow-y-auto custom-scrollbar">
           <div className="p-4">
             {/* Logo/Title */}
             <div className="flex items-center gap-3 mb-6 px-2">
