@@ -37,12 +37,40 @@ const EmployeeDashboard = () => {
     { month: 'Dec', amount: 48000, status: language === 'en' ? 'Processing' : 'प्रक्रिया में' },
   ];
 
-  const performanceData = [
-    { name: language === 'en' ? 'Week 1' : 'सप्ताह 1', tasks: 12, quality: 90 },
-    { name: language === 'en' ? 'Week 2' : 'सप्ताह 2', tasks: 19, quality: 85 },
-    { name: language === 'en' ? 'Week 3' : 'सप्ताह 3', tasks: 15, quality: 95 },
-    { name: language === 'en' ? 'Week 4' : 'सप्ताह 4', tasks: 22, quality: 92 },
-  ];
+  // Performance/Attendance Analytics State
+  const [performanceData, setPerformanceData] = useState([
+    { name: language === 'en' ? 'Week 1' : 'सप्ताह 1', tasks: 0, quality: 0 },
+    { name: language === 'en' ? 'Week 2' : 'सप्ताह 2', tasks: 0, quality: 0 },
+    { name: language === 'en' ? 'Week 3' : 'सप्ताह 3', tasks: 0, quality: 0 },
+    { name: language === 'en' ? 'Week 4' : 'सप्ताह 4', tasks: 0, quality: 0 },
+  ]);
+  const [isLoadingPerformance, setIsLoadingPerformance] = useState(false);
+
+  // Fetch attendance analytics for performance chart
+  const fetchAttendanceAnalytics = async () => {
+    if (!employeeId) return;
+
+    setIsLoadingPerformance(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URI}/attendance/analytics/${employeeId}?weeks=4`
+      );
+      const data = await response.json();
+      if (data.success && data.analytics) {
+        // Transform analytics data for chart
+        const chartData = data.analytics.map((week, index) => ({
+          name: language === 'en' ? `Week ${week.weekNumber}` : `सप्ताह ${week.weekNumber}`,
+          tasks: week.tasksCompleted,
+          quality: week.quality || week.attendancePercentage
+        }));
+        setPerformanceData(chartData);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance analytics:', error);
+    } finally {
+      setIsLoadingPerformance(false);
+    }
+  };
 
 
 
@@ -334,6 +362,7 @@ const EmployeeDashboard = () => {
     if (employeeId) {
       fetchAttendance();
       fetchTodayAttendance();
+      fetchAttendanceAnalytics();
       getCurrentLocation();
     }
   }, [employeeId, currentMonth, currentYear]);
@@ -926,45 +955,129 @@ const EmployeeDashboard = () => {
 
   const PerformanceSection = () => (
     <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-      <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{language === 'en' ? 'My Performance' : 'मेरा प्रदर्शन'}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{language === 'en' ? 'My Performance' : 'मेरा प्रदर्शन'}</h2>
+        <button
+          onClick={fetchAttendanceAnalytics}
+          disabled={isLoadingPerformance}
+          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors flex items-center gap-2 text-sm"
+        >
+          {isLoadingPerformance ? (
+            <>
+              <Loader className="animate-spin" size={16} />
+              {language === 'en' ? 'Loading...' : 'लोड हो रहा है...'}
+            </>
+          ) : (
+            <>
+              <BarChart3 size={16} />
+              {language === 'en' ? 'Refresh' : 'रीफ्रेश करें'}
+            </>
+          )}
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h3 className="font-semibold mb-6">{language === 'en' ? 'Task Completion' : 'कार्य पूर्णता'}</h3>
+          <h3 className="font-semibold mb-2">{language === 'en' ? 'Task Completion (Based on Attendance)' : 'कार्य पूर्णता (उपस्थिति के आधार पर)'}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">
+            {language === 'en' 
+              ? 'Tasks completed based on attendance days per week' 
+              : 'साप्ताहिक उपस्थिति के आधार पर पूर्ण किए गए कार्य'}
+          </p>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
-                <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px' }} />
-                <Bar dataKey="tasks" fill="#6F42C1" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoadingPerformance ? (
+              <div className="h-full flex items-center justify-center">
+                <Loader className="animate-spin text-gray-400" size={32} />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={performanceData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    domain={[0, 'dataMax']}
+                    ticks={[0, 1, 3, 5, 7]}
+                    allowDecimals={false}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'transparent' }} 
+                    contentStyle={{ borderRadius: '8px' }}
+                    formatter={(value) => [value, language === 'en' ? 'Tasks' : 'कार्य']}
+                  />
+                  <Bar dataKey="tasks" fill="#6F42C1" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h3 className="font-semibold mb-6">{language === 'en' ? 'Quality Score Trend' : 'गुणवत्ता स्कोर रुझान'}</h3>
+          <h3 className="font-semibold mb-2">{language === 'en' ? 'Attendance Percentage Trend' : 'उपस्थिति प्रतिशत रुझान'}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">
+            {language === 'en' 
+              ? 'Weekly attendance percentage over time' 
+              : 'समय के साथ साप्ताहिक उपस्थिति प्रतिशत'}
+          </p>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={performanceData}>
-                <defs>
-                  <linearGradient id="colorQuality2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: '8px' }} />
-                <Area type="monotone" dataKey="quality" stroke="#ec4899" fillOpacity={1} fill="url(#colorQuality2)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {isLoadingPerformance ? (
+              <div className="h-full flex items-center justify-center">
+                <Loader className="animate-spin text-gray-400" size={32} />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={performanceData}>
+                  <defs>
+                    <linearGradient id="colorQuality2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} domain={[0, 100]} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px' }}
+                    formatter={(value) => [`${value}%`, language === 'en' ? 'Attendance' : 'उपस्थिति']}
+                  />
+                  <Area type="monotone" dataKey="quality" stroke="#ec4899" fillOpacity={1} fill="url(#colorQuality2)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Summary Cards */}
+      {performanceData.some(d => d.tasks > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-4 text-white">
+            <p className="text-sm opacity-90 mb-1">{language === 'en' ? 'Total Tasks (Last 4 Weeks)' : 'कुल कार्य (अंतिम 4 सप्ताह)'}</p>
+            <p className="text-2xl font-bold">
+              {performanceData.reduce((sum, week) => sum + week.tasks, 0)}
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl p-4 text-white">
+            <p className="text-sm opacity-90 mb-1">{language === 'en' ? 'Average Attendance' : 'औसत उपस्थिति'}</p>
+            <p className="text-2xl font-bold">
+              {performanceData.length > 0
+                ? Math.round(performanceData.reduce((sum, week) => sum + week.quality, 0) / performanceData.length)
+                : 0}%
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-4 text-white">
+            <p className="text-sm opacity-90 mb-1">{language === 'en' ? 'Best Week' : 'सर्वश्रेष्ठ सप्ताह'}</p>
+            <p className="text-2xl font-bold">
+              {performanceData.length > 0
+                ? language === 'en' 
+                  ? `Week ${performanceData.reduce((max, week, idx) => week.quality > performanceData[max].quality ? idx : max, 0) + 1}`
+                  : `सप्ताह ${performanceData.reduce((max, week, idx) => week.quality > performanceData[max].quality ? idx : max, 0) + 1}`
+                : '-'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 

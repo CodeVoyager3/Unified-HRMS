@@ -366,5 +366,100 @@ router.get('/today/:employeeId', async (req, res) => {
     }
 });
 
+/**
+ * GET /attendance/analytics/:employeeId
+ * Get attendance analytics for performance charts (weekly data)
+ */
+router.get('/analytics/:employeeId', async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const { weeks = 4 } = req.query; // Default to last 4 weeks
+
+        if (!employeeId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Employee ID is required'
+            });
+        }
+
+        const now = new Date();
+        const analytics = [];
+
+        // Get data for the last N weeks
+        for (let i = parseInt(weeks) - 1; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - (i * 7) - now.getDay()); // Start of week (Sunday)
+            weekStart.setHours(0, 0, 0, 0);
+            weekStart.setMinutes(0, 0, 0);
+
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6); // End of week (Saturday)
+            weekEnd.setHours(23, 59, 59, 999);
+
+            // Get attendance records for this week
+            const weekRecords = await Attendance.find({
+                employeeId,
+                date: {
+                    $gte: weekStart,
+                    $lte: weekEnd
+                },
+                status: 'present'
+            });
+
+            // Count working days in week (excluding weekends)
+            let workingDays = 0;
+            for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+                const dayOfWeek = d.getDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Exclude Sunday (0) and Saturday (6)
+                    workingDays++;
+                }
+            }
+
+            // Tasks completed = number of days present (scaled or direct)
+            // You can scale this: e.g., if 5 working days, max tasks = 20, so tasks = (presentDays/workingDays) * 20
+            const presentDays = weekRecords.length;
+            const tasksCompleted = workingDays > 0 
+                ? Math.round((presentDays / workingDays) * 20) // Scale to 20 max tasks
+                : 0;
+
+            // Quality score based on attendance percentage (0-100)
+            const attendancePercentage = workingDays > 0 
+                ? Math.round((presentDays / workingDays) * 100)
+                : 0;
+
+            analytics.push({
+                weekNumber: parseInt(weeks) - i,
+                weekStart: weekStart,
+                weekEnd: weekEnd,
+                presentDays: presentDays,
+                workingDays: workingDays,
+                tasksCompleted: tasksCompleted,
+                attendancePercentage: attendancePercentage,
+                quality: attendancePercentage // Using attendance % as quality score
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            analytics: analytics,
+            summary: {
+                totalWeeks: parseInt(weeks),
+                averageAttendance: analytics.length > 0
+                    ? Math.round(analytics.reduce((sum, w) => sum + w.attendancePercentage, 0) / analytics.length)
+                    : 0,
+                totalPresentDays: analytics.reduce((sum, w) => sum + w.presentDays, 0),
+                totalWorkingDays: analytics.reduce((sum, w) => sum + w.workingDays, 0)
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching attendance analytics:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;
 
