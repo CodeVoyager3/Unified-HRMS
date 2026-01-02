@@ -219,6 +219,7 @@ const Overview = ({ language }) => {
                                         color: '#fff',
                                         boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                                     }}
+                                    itemStyle={{ color: '#fff' }}
                                 />
                             </PieChart>
                         </ResponsiveContainer>
