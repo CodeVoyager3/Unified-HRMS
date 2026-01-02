@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -13,7 +13,10 @@ import {
   Menu,
   X,
   Clock,
-  Send
+  Send,
+  CheckCircle,
+  XCircle,
+  Loader
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -162,20 +165,214 @@ const EmployeeDashboard = () => {
     </div>
   );
 
-  // Mock Data for Calendar
+  // Attendance state
+  const [employeeId, setEmployeeId] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [locationVerified, setLocationVerified] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [attendanceStatus, setAttendanceStatus] = useState({});
+  const [todayAttendance, setTodayAttendance] = useState(null);
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [isWithinCheckInTime, setIsWithinCheckInTime] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Check if current time is within check-in window (9 AM to 11 AM)
+  const checkTimeWindow = () => {
+    const now = new Date();
+    setCurrentTime(now);
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+    const startTimeInMinutes = 9 * 60; // 9:00 AM
+    const endTimeInMinutes = 11 * 60; // 11:00 AM
+    
+    const withinWindow = currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes <= endTimeInMinutes;
+    setIsWithinCheckInTime(withinWindow);
+    return withinWindow;
+  };
+
+  // Update time check every minute
+  useEffect(() => {
+    checkTimeWindow();
+    const interval = setInterval(() => {
+      checkTimeWindow();
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Get employee ID from email
+  useEffect(() => {
+    const fetchEmployeeId = async () => {
+      if (user?.primaryEmailAddress?.emailAddress) {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_BACKEND_URI}/verify/by-email/${encodeURIComponent(user.primaryEmailAddress.emailAddress)}`
+          );
+          const data = await response.json();
+          if (data.success && data.user) {
+            setEmployeeId(data.user.employeeId);
+          }
+        } catch (error) {
+          console.error('Error fetching employee ID:', error);
+        }
+      }
+    };
+    fetchEmployeeId();
+  }, [user]);
+
+  // Get current location
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError(language === 'en' ? 'Geolocation is not supported by your browser' : 'आपके ब्राउज़र द्वारा जियोलोकेशन समर्थित नहीं है');
+      return;
+    }
+
+    setIsLoadingAttendance(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setCurrentLocation({ latitude, longitude });
+        setLocationError(null);
+
+        // Verify location if employee ID is available
+        if (employeeId) {
+          try {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/attendance/verify-location`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ employeeId, latitude, longitude })
+            });
+            const data = await response.json();
+            setLocationVerified(data.isLocationVerified);
+            if (!data.isLocationVerified) {
+              setLocationError(data.message);
+            }
+          } catch (error) {
+            console.error('Error verifying location:', error);
+            setLocationError(language === 'en' ? 'Failed to verify location' : 'लोकेशन सत्यापित करने में विफल');
+          }
+        }
+        setIsLoadingAttendance(false);
+      },
+      (error) => {
+        setLocationError(
+          language === 'en' 
+            ? 'Unable to retrieve your location. Please enable location services.' 
+            : 'आपकी लोकेशन प्राप्त करने में असमर्थ। कृपया लोकेशन सेवाएं सक्षम करें।'
+        );
+        setIsLoadingAttendance(false);
+      }
+    );
+  };
+
+  // Get attendance data for calendar
+  const fetchAttendance = async (month = currentMonth, year = currentYear) => {
+    if (!employeeId) return;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URI}/attendance/${employeeId}?month=${month + 1}&year=${year}`
+      );
+      const data = await response.json();
+      if (data.success) {
+        const statusMap = {};
+        Object.keys(data.attendance).forEach(day => {
+          statusMap[day] = data.attendance[day].status;
+        });
+        setAttendanceStatus(statusMap);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+    }
+  };
+
+  // Get today's attendance
+  const fetchTodayAttendance = async () => {
+    if (!employeeId) return;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URI}/attendance/today/${employeeId}`
+      );
+      const data = await response.json();
+      if (data.success) {
+        setTodayAttendance(data.attendance);
+      }
+    } catch (error) {
+      console.error('Error fetching today attendance:', error);
+    }
+  };
+
+  // Load attendance on mount and when employeeId changes
+  useEffect(() => {
+    if (employeeId) {
+      fetchAttendance();
+      fetchTodayAttendance();
+      getCurrentLocation();
+    }
+  }, [employeeId, currentMonth, currentYear]);
+
+  // Handle check-in
+  const handleCheckIn = async () => {
+    if (!employeeId || !currentLocation) {
+      alert(language === 'en' ? 'Please allow location access first' : 'कृपया पहले लोकेशन एक्सेस की अनुमति दें');
+      return;
+    }
+
+    if (!isWithinCheckInTime) {
+      alert(language === 'en' ? 'Attendance can only be marked between 9:00 AM and 11:00 AM' : 'उपस्थिति केवल सुबह 9:00 बजे से 11:00 बजे के बीच दर्ज की जा सकती है');
+      return;
+    }
+
+    if (!locationVerified) {
+      alert(language === 'en' ? 'You are not in your assigned ward. Cannot mark attendance.' : 'आप अपने निर्दिष्ट वार्ड में नहीं हैं। उपस्थिति दर्ज नहीं की जा सकती।');
+      return;
+    }
+
+    setIsCheckingIn(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/attendance/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId,
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(language === 'en' ? 'Attendance marked successfully!' : 'उपस्थिति सफलतापूर्वक दर्ज की गई!');
+        fetchTodayAttendance();
+        fetchAttendance();
+      } else {
+        alert(data.message || (language === 'en' ? 'Failed to mark attendance' : 'उपस्थिति दर्ज करने में विफल'));
+      }
+    } catch (error) {
+      console.error('Error marking attendance:', error);
+      alert(language === 'en' ? 'Error marking attendance' : 'उपस्थिति दर्ज करने में त्रुटि');
+    } finally {
+      setIsCheckingIn(false);
+    }
+  };
+
+  // Calendar helper functions
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
 
-  // Mock Attendance Status: 1-10 Present, 11 Leave, 12 Absent, 13-today Mixed
-  const attendanceStatus = {
-    '1': 'present', '2': 'present', '3': 'present', '4': 'present', '5': 'weekend',
-    '6': 'weekend', '7': 'present', '8': 'present', '9': 'leave', '10': 'present',
-    '12': 'absent', '13': 'weekend', '14': 'weekend', '15': 'present'
+  // Check if day is weekend
+  const isWeekend = (day) => {
+    const date = new Date(currentYear, currentMonth, day);
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
   };
 
   const recentIssues = [
@@ -194,22 +391,58 @@ const EmployeeDashboard = () => {
             <MapPin className="text-red-500" />
             <h3 className="font-semibold text-gray-700 dark:text-gray-200">{language === 'en' ? 'Live Location Tracking' : 'लाइव लोकेशन ट्रैकिंग'}</h3>
           </div>
-          <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative group mb-6">
-            {/* Placeholder for Google Maps */}
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d224345.83923192776!2d77.0688975472578!3d28.52728034389636!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cfd5b347eb62d%3A0x52c2b7494e204dce!2sNew%20Delhi%2C%20Delhi!5e0!3m2!1sen!2sin!4v1709405234567!5m2!1sen!2sin"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen=""
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="grayscale hover:grayscale-0 transition-all duration-500"
-            ></iframe>
-            <div className="absolute bottom-4 right-4 bg-white/90 px-3 py-1 rounded-full text-xs font-semibold shadow-sm">
-              {language === 'en' ? 'Updating live...' : 'लाइव अपडेट हो रहा है...'}
+          <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden relative group mb-4">
+            {/* Google Maps with current location */}
+            {currentLocation ? (
+              <iframe
+                src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d224345.83923192776!2d${currentLocation.longitude}!3d${currentLocation.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cfd5b347eb62d%3A0x52c2b7494e204dce!2sNew%20Delhi%2C%20Delhi!5e0!3m2!1sen!2sin!4v1709405234567!5m2!1sen!2sin`}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen=""
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="grayscale hover:grayscale-0 transition-all duration-500"
+              ></iframe>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Loader className="animate-spin text-gray-400" size={32} />
+              </div>
+            )}
+            <div className="absolute bottom-4 right-4 bg-white/90 px-3 py-1 rounded-full text-xs font-semibold shadow-sm flex items-center gap-2">
+              {locationVerified ? (
+                <>
+                  <CheckCircle className="text-green-500" size={14} />
+                  <span>{language === 'en' ? 'Location Verified' : 'लोकेशन सत्यापित'}</span>
+                </>
+              ) : currentLocation ? (
+                <>
+                  <XCircle className="text-red-500" size={14} />
+                  <span>{language === 'en' ? 'Location Not Verified' : 'लोकेशन सत्यापित नहीं'}</span>
+                </>
+              ) : (
+                <span>{language === 'en' ? 'Getting location...' : 'लोकेशन प्राप्त कर रहे हैं...'}</span>
+              )}
             </div>
           </div>
+          {locationError && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-700 dark:text-red-400">{locationError}</p>
+            </div>
+          )}
+          {currentLocation && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              {language === 'en' ? 'Coordinates: ' : 'निर्देशांक: '}
+              {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+            </div>
+          )}
+          <button
+            onClick={getCurrentLocation}
+            className="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <MapPin size={16} />
+            {language === 'en' ? 'Refresh Location' : 'लोकेशन रीफ्रेश करें'}
+          </button>
         </div>
 
         {/* Actions Section */}
@@ -220,13 +453,112 @@ const EmployeeDashboard = () => {
               <h3 className="font-semibold text-gray-700 dark:text-gray-200">{language === 'en' ? 'Mark Attendance' : 'उपस्थिति दर्ज करें'}</h3>
               <Clock className="text-blue-500" size={20} />
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              {language === 'en' ? 'Your location is within the allowed zone. You can now mark your attendance.' : 'आपकी लोकेशन अनुमत क्षेत्र के भीतर है। अब आप अपनी उपस्थिति दर्ज कर सकते हैं।'}
-            </p>
-            <button className="w-full bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/30 transform active:scale-95 transition-all flex items-center justify-center gap-2">
-              <MapPin size={20} />
-              {language === 'en' ? 'Check In Now' : 'चेक इन करें'}
-            </button>
+            {todayAttendance?.checkInTime ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle className="text-green-500" size={20} />
+                    <span className="font-semibold text-green-700 dark:text-green-400">
+                      {language === 'en' ? 'Checked In' : 'चेक इन किया गया'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    {language === 'en' ? 'Check-in Time: ' : 'चेक-इन समय: '}
+                    {new Date(todayAttendance.checkInTime).toLocaleTimeString()}
+                  </p>
+                  {todayAttendance.checkOutTime ? (
+                    <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+                      {language === 'en' ? 'Check-out Time: ' : 'चेक-आउट समय: '}
+                      {new Date(todayAttendance.checkOutTime).toLocaleTimeString()}
+                    </p>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/attendance/checkout`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ employeeId })
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            alert(language === 'en' ? 'Check-out successful!' : 'चेक-आउट सफल!');
+                            fetchTodayAttendance();
+                          }
+                        } catch (error) {
+                          console.error('Error checking out:', error);
+                        }
+                      }}
+                      className="mt-3 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 rounded-lg transition-colors"
+                    >
+                      {language === 'en' ? 'Check Out' : 'चेक आउट करें'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Time Window Info */}
+                <div className={`mb-4 p-3 rounded-lg border ${
+                  isWithinCheckInTime 
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                    : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                }`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className={isWithinCheckInTime ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'} size={16} />
+                    <span className={`text-sm font-semibold ${
+                      isWithinCheckInTime 
+                        ? 'text-green-700 dark:text-green-400' 
+                        : 'text-yellow-700 dark:text-yellow-400'
+                    }`}>
+                      {language === 'en' ? 'Check-in Time Window' : 'चेक-इन समय विंडो'}
+                    </span>
+                  </div>
+                  <p className={`text-xs ${
+                    isWithinCheckInTime 
+                      ? 'text-green-600 dark:text-green-400' 
+                      : 'text-yellow-700 dark:text-yellow-400'
+                  }`}>
+                    {isWithinCheckInTime 
+                      ? (language === 'en' 
+                          ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - You can check in now!`
+                          : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - आप अभी चेक इन कर सकते हैं!`)
+                      : (language === 'en' 
+                          ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - Check-in allowed only between 9:00 AM - 11:00 AM`
+                          : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - चेक-इन केवल सुबह 9:00 बजे से 11:00 बजे के बीच अनुमत है`)}
+                  </p>
+                </div>
+
+                <p className={`text-sm mb-6 ${locationVerified && isWithinCheckInTime ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                  {locationVerified && isWithinCheckInTime
+                    ? (language === 'en' ? 'Your location is verified. You can now mark your attendance.' : 'आपकी लोकेशन सत्यापित है। अब आप अपनी उपस्थिति दर्ज कर सकते हैं।')
+                    : !isWithinCheckInTime
+                    ? (language === 'en' ? 'Please wait for the check-in time window (9:00 AM - 11:00 AM).' : 'कृपया चेक-इन समय विंडो (सुबह 9:00 बजे - 11:00 बजे) का इंतजार करें।')
+                    : (language === 'en' ? 'Please allow location access and verify you are in your assigned ward.' : 'कृपया लोकेशन एक्सेस की अनुमति दें और सत्यापित करें कि आप अपने निर्दिष्ट वार्ड में हैं।')}
+                </p>
+                <button
+                  onClick={handleCheckIn}
+                  disabled={!locationVerified || isCheckingIn || !currentLocation || !isWithinCheckInTime}
+                  className={`w-full font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2 ${
+                    locationVerified && !isCheckingIn && currentLocation && isWithinCheckInTime
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/30'
+                      : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {isCheckingIn ? (
+                    <>
+                      <Loader className="animate-spin" size={20} />
+                      {language === 'en' ? 'Checking In...' : 'चेक इन हो रहा है...'}
+                    </>
+                  ) : (
+                    <>
+                      <MapPin size={20} />
+                      {language === 'en' ? 'Check In Now' : 'चेक इन करें'}
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Leave Request */}
@@ -252,11 +584,43 @@ const EmployeeDashboard = () => {
       {/* Attendance Calendar - Full Width Below Top Section */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="font-semibold text-gray-700 dark:text-gray-200">{language === 'en' ? 'Attendance Log - October 2023' : 'उपस्थिति लॉग - अक्टूबर 2023'}</h3>
+          <div className="flex items-center gap-4">
+            <h3 className="font-semibold text-gray-700 dark:text-gray-200">
+              {language === 'en' 
+                ? `Attendance Log - ${new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+                : `उपस्थिति लॉग - ${new Date(currentYear, currentMonth).toLocaleDateString('hi-IN', { month: 'long', year: 'numeric' })}`}
+            </h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  const newMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+                  const newYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+                  setCurrentMonth(newMonth);
+                  setCurrentYear(newYear);
+                  fetchAttendance(newMonth, newYear);
+                }}
+                className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                ←
+              </button>
+              <button
+                onClick={() => {
+                  const newMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+                  const newYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+                  setCurrentMonth(newMonth);
+                  setCurrentYear(newYear);
+                  fetchAttendance(newMonth, newYear);
+                }}
+                className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                →
+              </button>
+            </div>
+          </div>
           <div className="flex gap-4 text-xs">
-            <div className="flex items-center gap-1"><span className="w-3 h-3 bg-green-500 rounded-full"></span> Present</div>
-            <div className="flex items-center gap-1"><span className="w-3 h-3 bg-yellow-500 rounded-full"></span> Leave</div>
-            <div className="flex items-center gap-1"><span className="w-3 h-3 bg-red-500 rounded-full"></span> Absent</div>
+            <div className="flex items-center gap-1"><span className="w-3 h-3 bg-green-500 rounded-full"></span> {language === 'en' ? 'Present' : 'उपस्थित'}</div>
+            <div className="flex items-center gap-1"><span className="w-3 h-3 bg-yellow-500 rounded-full"></span> {language === 'en' ? 'Leave' : 'छुट्टी'}</div>
+            <div className="flex items-center gap-1"><span className="w-3 h-3 bg-red-500 rounded-full"></span> {language === 'en' ? 'Absent' : 'अनुपस्थित'}</div>
           </div>
         </div>
 
@@ -273,7 +637,12 @@ const EmployeeDashboard = () => {
           {/* Days of month */}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
-            const status = attendanceStatus[day] || 'none';
+            const date = new Date(currentYear, currentMonth, day);
+            const isToday = date.toDateString() === new Date().toDateString();
+            const isPast = date < new Date() && !isToday;
+            const isWeekendDay = isWeekend(day);
+            const status = attendanceStatus[day] || (isWeekendDay ? 'weekend' : (isPast ? 'absent' : 'none'));
+            
             let bgClass = "bg-gray-50 dark:bg-gray-700/50";
             let textClass = "text-gray-400";
 
@@ -286,14 +655,24 @@ const EmployeeDashboard = () => {
             } else if (status === 'absent') {
               bgClass = "bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800";
               textClass = "text-red-700 dark:text-red-400";
+            } else if (isWeekendDay) {
+              bgClass = "bg-gray-100 dark:bg-gray-700/50";
+              textClass = "text-gray-400";
             }
 
             return (
-              <div key={day} className={`h-10 md:h-24 border rounded-xl p-2 flex flex-col justify-between transition-all hover:shadow-md ${bgClass} ${status !== 'none' && status !== 'weekend' ? 'border' : 'border-transparent'}`}>
-                <span className={`text-sm font-semibold ${textClass}`}>{day}</span>
+              <div 
+                key={day} 
+                className={`h-10 md:h-24 border rounded-xl p-2 flex flex-col justify-between transition-all hover:shadow-md ${bgClass} ${isToday ? 'ring-2 ring-blue-500' : ''} ${status !== 'none' && status !== 'weekend' ? 'border' : 'border-transparent'}`}
+              >
+                <span className={`text-sm font-semibold ${textClass} ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
+                  {day}
+                </span>
                 {status !== 'none' && status !== 'weekend' && (
                   <div className="hidden md:block">
-                    <span className={`text-[10px] uppercase font-bold tracking-wider ${textClass}`}>{status}</span>
+                    <span className={`text-[10px] uppercase font-bold tracking-wider ${textClass}`}>
+                      {language === 'en' ? status : (status === 'present' ? 'उपस्थित' : status === 'leave' ? 'छुट्टी' : 'अनुपस्थित')}
+                    </span>
                   </div>
                 )}
               </div>

@@ -3,6 +3,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const cors = require('cors');
 const verifyRoute = require('./src/routes/employeeVerify');
+const attendanceRoute = require('./src/routes/attendance');
 const connectDB = require("./src/utils/db");
 connectDB();
 
@@ -16,6 +17,7 @@ app.get('/', (req, res) => {
 })
 
 app.use("/verify", verifyRoute);
+app.use("/attendance", attendanceRoute);
 
 
 app.listen(PORT, () => {
