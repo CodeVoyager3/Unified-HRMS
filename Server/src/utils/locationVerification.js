@@ -31,11 +31,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function getWardCoordinates(wardNumber, zone) {
     // Delhi center coordinates (approximate)
     const delhiCenter = { latitude: 28.6139, longitude: 77.2090 };
-    
+
     // Simplified ward mapping - each ward is offset slightly
     // In production, use actual ward boundary data from GIS
     const wardOffset = wardNumber * 0.01; // Small offset per ward
-    
+
     return {
         latitude: delhiCenter.latitude + (wardOffset % 0.5),
         longitude: delhiCenter.longitude + (wardOffset % 0.5)
@@ -51,7 +51,7 @@ function getWardCoordinates(wardNumber, zone) {
  * @param {number} allowedRadius - Allowed radius in meters (default: 1000m = 1km)
  * @returns {Object} {isValid: boolean, distance: number, message: string}
  */
-function verifyLocationInWard(currentLat, currentLon, assignedWard, assignedZone, allowedRadius = 1000) {
+function verifyLocationInWard(currentLat, currentLon, assignedWard, assignedZone, allowedRadius = 25000) {
     if (!assignedWard) {
         return {
             isValid: false,

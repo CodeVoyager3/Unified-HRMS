@@ -17,11 +17,8 @@ app.get('/', (req, res) => {
 })
 
 app.use("/verify", verifyRoute);
-<<<<<<< HEAD
 app.use("/employee-issue", require('./src/routes/employeeIssue'));
-=======
 app.use("/attendance", attendanceRoute);
->>>>>>> 4861f750e8353007d3c83ee997e74e0ca6726805
 
 
 app.listen(PORT, () => {

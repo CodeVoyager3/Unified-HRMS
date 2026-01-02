@@ -16,6 +16,7 @@ import {
   Send,
   CheckCircle,
   XCircle,
+  AlertTriangle,
   Loader
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
@@ -167,8 +168,10 @@ const EmployeeDashboard = () => {
 
   // Attendance state
   const [employeeId, setEmployeeId] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationVerified, setLocationVerified] = useState(false);
+  const [distanceFromWard, setDistanceFromWard] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState({});
@@ -188,7 +191,7 @@ const EmployeeDashboard = () => {
     const currentTimeInMinutes = currentHour * 60 + currentMinute;
     const startTimeInMinutes = 9 * 60; // 9:00 AM
     const endTimeInMinutes = 11 * 60; // 11:00 AM
-    
+
     const withinWindow = currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes <= endTimeInMinutes;
     setIsWithinCheckInTime(withinWindow);
     return withinWindow;
@@ -241,13 +244,24 @@ const EmployeeDashboard = () => {
         // Verify location if employee ID is available
         if (employeeId) {
           try {
+            // Get Ward/Zone from localStorage
+            const storedData = localStorage.getItem('verifiedUser');
+            let ward = null;
+            let zone = null;
+            if (storedData) {
+              const userData = JSON.parse(storedData);
+              ward = userData.Ward;
+              zone = userData.Zone;
+            }
+
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/attendance/verify-location`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ employeeId, latitude, longitude })
+              body: JSON.stringify({ employeeId, latitude, longitude, ward, zone })
             });
             const data = await response.json();
             setLocationVerified(data.isLocationVerified);
+            if (data.distance !== undefined) setDistanceFromWard(data.distance);
             if (!data.isLocationVerified) {
               setLocationError(data.message);
             }
@@ -260,12 +274,13 @@ const EmployeeDashboard = () => {
       },
       (error) => {
         setLocationError(
-          language === 'en' 
-            ? 'Unable to retrieve your location. Please enable location services.' 
+          language === 'en'
+            ? 'Unable to retrieve your location. Please enable location services.'
             : 'आपकी लोकेशन प्राप्त करने में असमर्थ। कृपया लोकेशन सेवाएं सक्षम करें।'
         );
         setIsLoadingAttendance(false);
-      }
+      },
+      { enableHighAccuracy: true }
     );
   };
 
@@ -309,6 +324,13 @@ const EmployeeDashboard = () => {
 
   // Load attendance on mount and when employeeId changes
   useEffect(() => {
+
+    // Load local user data for display
+    const storedData = localStorage.getItem('verifiedUser');
+    if (storedData) {
+      setUserData(JSON.parse(storedData));
+    }
+
     if (employeeId) {
       fetchAttendance();
       fetchTodayAttendance();
@@ -335,13 +357,25 @@ const EmployeeDashboard = () => {
 
     setIsCheckingIn(true);
     try {
+      // Get Ward/Zone from localStorage
+      const storedData = localStorage.getItem('verifiedUser');
+      let ward = null;
+      let zone = null;
+      if (storedData) {
+        const userData = JSON.parse(storedData);
+        ward = userData.Ward;
+        zone = userData.Zone;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/attendance/checkin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeId,
           latitude: currentLocation.latitude,
-          longitude: currentLocation.longitude
+          longitude: currentLocation.longitude,
+          ward,
+          zone
         })
       });
 
@@ -364,17 +398,16 @@ const EmployeeDashboard = () => {
   // Calendar helper functions
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+  const isWeekend = (day) => {
+    const date = new Date(currentYear, currentMonth, day);
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  };
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
 
   // Mock Attendance Status: 1-10 Present, 11 Leave, 12 Absent, 13-today Mixed
-  const attendanceStatus = {
-    '1': 'present', '2': 'present', '3': 'present', '4': 'present', '5': 'weekend',
-    '6': 'weekend', '7': 'present', '8': 'present', '9': 'leave', '10': 'present',
-    '12': 'absent', '13': 'weekend', '14': 'weekend', '15': 'present'
-  };
-
 
 
   const AttendanceSection = () => (
@@ -391,7 +424,7 @@ const EmployeeDashboard = () => {
             {/* Google Maps with current location */}
             {currentLocation ? (
               <iframe
-                src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d224345.83923192776!2d${currentLocation.longitude}!3d${currentLocation.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cfd5b347eb62d%3A0x52c2b7494e204dce!2sNew%20Delhi%2C%20Delhi!5e0!3m2!1sen!2sin!4v1709405234567!5m2!1sen!2sin`}
+                src={`https://maps.google.com/maps?q=${currentLocation.latitude},${currentLocation.longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
@@ -426,10 +459,35 @@ const EmployeeDashboard = () => {
               <p className="text-sm text-red-700 dark:text-red-400">{locationError}</p>
             </div>
           )}
+
+          {currentLocation && !locationVerified && (
+            <div className="mb-4 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-2">
+              <AlertTriangle size={14} />
+              <span>
+                {language === 'en'
+                  ? 'Tip: Desktop location is often inaccurate. Please use a mobile phone for precise GPS location.'
+                  : 'सुझाव: डेस्कटॉप लोकेशन अक्सर गलत होती है। सटीक जीपीएस लोकेशन के लिए कृपया मोबाइल फोन का उपयोग करें।'}
+              </span>
+            </div>
+          )}
+
           {currentLocation && (
             <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
               {language === 'en' ? 'Coordinates: ' : 'निर्देशांक: '}
               {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+            </div>
+          )}
+
+          {userData && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+              <span className="font-semibold">{language === 'en' ? 'Assigned Location: ' : 'निर्दिष्ट स्थान: '}</span>
+              {language === 'en' ? 'Zone' : 'जोन'} {userData.Zone || 'N/A'}, {language === 'en' ? 'Ward' : 'वार्ड'} {userData.Ward || 'N/A'}
+            </div>
+          )}
+          {distanceFromWard !== null && (
+            <div className={`text-xs ${distanceFromWard > 25000 ? 'text-red-600 font-bold' : 'text-gray-500 dark:text-gray-400'} mb-4`}>
+              <span className="font-semibold">{language === 'en' ? 'Distance: ' : 'दूरी: '}</span>
+              {distanceFromWard >= 1000 ? `${(distanceFromWard / 1000).toFixed(2)} km` : `${Math.round(distanceFromWard)} m`}
             </div>
           )}
           <button
@@ -495,33 +553,30 @@ const EmployeeDashboard = () => {
             ) : (
               <>
                 {/* Time Window Info */}
-                <div className={`mb-4 p-3 rounded-lg border ${
-                  isWithinCheckInTime 
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                    : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                }`}>
+                <div className={`mb-4 p-3 rounded-lg border ${isWithinCheckInTime
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                  : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                  }`}>
                   <div className="flex items-center gap-2 mb-1">
                     <Clock className={isWithinCheckInTime ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'} size={16} />
-                    <span className={`text-sm font-semibold ${
-                      isWithinCheckInTime 
-                        ? 'text-green-700 dark:text-green-400' 
-                        : 'text-yellow-700 dark:text-yellow-400'
-                    }`}>
+                    <span className={`text-sm font-semibold ${isWithinCheckInTime
+                      ? 'text-green-700 dark:text-green-400'
+                      : 'text-yellow-700 dark:text-yellow-400'
+                      }`}>
                       {language === 'en' ? 'Check-in Time Window' : 'चेक-इन समय विंडो'}
                     </span>
                   </div>
-                  <p className={`text-xs ${
-                    isWithinCheckInTime 
-                      ? 'text-green-600 dark:text-green-400' 
-                      : 'text-yellow-700 dark:text-yellow-400'
-                  }`}>
-                    {isWithinCheckInTime 
-                      ? (language === 'en' 
-                          ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - You can check in now!`
-                          : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - आप अभी चेक इन कर सकते हैं!`)
-                      : (language === 'en' 
-                          ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - Check-in allowed only between 9:00 AM - 11:00 AM`
-                          : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - चेक-इन केवल सुबह 9:00 बजे से 11:00 बजे के बीच अनुमत है`)}
+                  <p className={`text-xs ${isWithinCheckInTime
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-yellow-700 dark:text-yellow-400'
+                    }`}>
+                    {isWithinCheckInTime
+                      ? (language === 'en'
+                        ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - You can check in now!`
+                        : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - आप अभी चेक इन कर सकते हैं!`)
+                      : (language === 'en'
+                        ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - Check-in allowed only between 9:00 AM - 11:00 AM`
+                        : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - चेक-इन केवल सुबह 9:00 बजे से 11:00 बजे के बीच अनुमत है`)}
                   </p>
                 </div>
 
@@ -529,17 +584,16 @@ const EmployeeDashboard = () => {
                   {locationVerified && isWithinCheckInTime
                     ? (language === 'en' ? 'Your location is verified. You can now mark your attendance.' : 'आपकी लोकेशन सत्यापित है। अब आप अपनी उपस्थिति दर्ज कर सकते हैं।')
                     : !isWithinCheckInTime
-                    ? (language === 'en' ? 'Please wait for the check-in time window (9:00 AM - 11:00 AM).' : 'कृपया चेक-इन समय विंडो (सुबह 9:00 बजे - 11:00 बजे) का इंतजार करें।')
-                    : (language === 'en' ? 'Please allow location access and verify you are in your assigned ward.' : 'कृपया लोकेशन एक्सेस की अनुमति दें और सत्यापित करें कि आप अपने निर्दिष्ट वार्ड में हैं।')}
+                      ? (language === 'en' ? 'Please wait for the check-in time window (9:00 AM - 11:00 AM).' : 'कृपया चेक-इन समय विंडो (सुबह 9:00 बजे - 11:00 बजे) का इंतजार करें।')
+                      : (language === 'en' ? 'Please allow location access and verify you are in your assigned ward.' : 'कृपया लोकेशन एक्सेस की अनुमति दें और सत्यापित करें कि आप अपने निर्दिष्ट वार्ड में हैं।')}
                 </p>
                 <button
                   onClick={handleCheckIn}
                   disabled={!locationVerified || isCheckingIn || !currentLocation || !isWithinCheckInTime}
-                  className={`w-full font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2 ${
-                    locationVerified && !isCheckingIn && currentLocation && isWithinCheckInTime
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/30'
-                      : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                  }`}
+                  className={`w-full font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2 ${locationVerified && !isCheckingIn && currentLocation && isWithinCheckInTime
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/30'
+                    : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                    }`}
                 >
                   {isCheckingIn ? (
                     <>
@@ -582,7 +636,7 @@ const EmployeeDashboard = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <h3 className="font-semibold text-gray-700 dark:text-gray-200">
-              {language === 'en' 
+              {language === 'en'
                 ? `Attendance Log - ${new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
                 : `उपस्थिति लॉग - ${new Date(currentYear, currentMonth).toLocaleDateString('hi-IN', { month: 'long', year: 'numeric' })}`}
             </h3>
@@ -638,7 +692,7 @@ const EmployeeDashboard = () => {
             const isPast = date < new Date() && !isToday;
             const isWeekendDay = isWeekend(day);
             const status = attendanceStatus[day] || (isWeekendDay ? 'weekend' : (isPast ? 'absent' : 'none'));
-            
+
             let bgClass = "bg-gray-50 dark:bg-gray-700/50";
             let textClass = "text-gray-400";
 
@@ -657,8 +711,8 @@ const EmployeeDashboard = () => {
             }
 
             return (
-              <div 
-                key={day} 
+              <div
+                key={day}
                 className={`h-10 md:h-24 border rounded-xl p-2 flex flex-col justify-between transition-all hover:shadow-md ${bgClass} ${isToday ? 'ring-2 ring-blue-500' : ''} ${status !== 'none' && status !== 'weekend' ? 'border' : 'border-transparent'}`}
               >
                 <span className={`text-sm font-semibold ${textClass} ${isToday ? 'text-blue-600 dark:text-blue-400' : ''}`}>
