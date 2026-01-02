@@ -7,6 +7,7 @@ import {
     BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import DelhiZoneMap from './DelhiZoneMap';
 
 const Overview = ({ language }) => {
     // Stats data with purple theme colors
@@ -162,15 +163,15 @@ const Overview = ({ language }) => {
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Bar Chart - Hiring Trends */}
+                {/* Zone Performance Map */}
                 <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-4">
                         <div>
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                                {language === 'en' ? 'Recruitment & Transfers' : 'भर्ती और स्थानांतरण'}
+                                {language === 'en' ? 'Zone Performance Map' : 'जोन प्रदर्शन मानचित्र'}
                             </h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {language === 'en' ? 'Monthly overview for 2025' : '2025 के लिए मासिक अवलोकन'}
+                                {language === 'en' ? 'Click on zones to view details' : 'विवरण देखने के लिए जोन पर क्लिक करें'}
                             </p>
                         </div>
                         <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#6F42C1] dark:text-[#a074f0] hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors">
@@ -178,67 +179,70 @@ const Overview = ({ language }) => {
                             {language === 'en' ? 'View Report' : 'रिपोर्ट देखें'}
                         </button>
                     </div>
-                    <ResponsiveContainer width="100%" height={280}>
-                        <BarChart data={hiringTrendData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-gray-700" />
-                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: '#1f2937',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    color: '#fff'
-                                }}
-                            />
-                            <Legend />
-                            <Bar dataKey="hired" name={language === 'en' ? 'Hired' : 'नियुक्त'} fill="#6F42C1" radius={[6, 6, 0, 0]} />
-                            <Bar dataKey="transfers" name={language === 'en' ? 'Transfers' : 'स्थानांतरण'} fill="#a074f0" radius={[6, 6, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    <DelhiZoneMap language={language} />
                 </div>
 
                 {/* Pie Chart - Department Distribution */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-                        {language === 'en' ? 'Department Distribution' : 'विभाग वितरण'}
-                    </h3>
-                    <ResponsiveContainer width="100%" height={180}>
-                        <PieChart>
-                            <Pie
-                                data={departmentData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={50}
-                                outerRadius={75}
-                                dataKey="value"
-                                strokeWidth={0}
-                            >
-                                {departmentData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                            <Tooltip
-                                formatter={(value) => value.toLocaleString()}
-                                contentStyle={{
-                                    backgroundColor: '#1f2937',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    color: '#fff'
-                                }}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800 flex flex-col justify-between h-full min-h-[400px]">
+                    <div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                            {language === 'en' ? 'Department Distribution' : 'विभाग वितरण'}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {language === 'en' ? 'Employee breakdown by sector' : 'क्षेत्र के अनुसार कर्मचारी विवरण'}
+                        </p>
+                    </div>
+
+                    <div className="flex-1 min-h-[250px] relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={departmentData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={85}
+                                    outerRadius={110}
+                                    paddingAngle={2}
+                                    dataKey="value"
+                                    strokeWidth={0}
+                                >
+                                    {departmentData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    formatter={(value) => value.toLocaleString()}
+                                    contentStyle={{
+                                        backgroundColor: '#1f2937',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                                    }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        {/* Center Text */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                                1.5L+
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">
+                                {language === 'en' ? 'Employees' : 'कर्मचारी'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-4 mt-2">
                         {departmentData.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                <div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{item.name}</p>
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                        {Math.round((item.value / 130000) * 100)}%
-                                    </p>
+                            <div key={idx} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-default">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: item.color }}></div>
+                                    <p className="text-xs font-medium text-gray-600 dark:text-gray-300">{item.name}</p>
                                 </div>
+                                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                                    {Math.round((item.value / 130000) * 100)}%
+                                </p>
                             </div>
                         ))}
                     </div>

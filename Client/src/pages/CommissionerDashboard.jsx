@@ -16,7 +16,6 @@ import Overview from '../components/dashboard/Overview';
 import Notices from '../components/dashboard/Notices';
 import Transfers from '../components/dashboard/Transfers';
 import Approvals from '../components/dashboard/Approvals';
-import Analytics from '../components/dashboard/Analytics';
 import Employees from '../components/dashboard/Employees';
 
 const AdminDashboard = () => {
@@ -30,8 +29,7 @@ const AdminDashboard = () => {
     { icon: FileText, label: language === 'en' ? 'Notices' : 'सूचनाएं', id: 'Notices' },
     { icon: Briefcase, label: language === 'en' ? 'Transfers' : 'स्थानांतरण', id: 'Transfers' },
     { icon: CheckCircle, label: language === 'en' ? 'Approvals' : 'अनुमोदन', id: 'Approvals' },
-    { icon: BarChart3, label: language === 'en' ? 'Analytics' : 'विश्लेषण', id: 'Analytics' },
-    { icon: Users, label: language === 'en' ? 'Employees' : 'कर्मचारी', id: 'Employees' },
+    { icon: Users, label: language === 'en' ? 'Deputy Commissioners' : 'कनिष्ठ कर्मचारी', id: 'DeputyCommissioners' },
   ];
 
   const renderContent = () => {
@@ -44,11 +42,8 @@ const AdminDashboard = () => {
         return <Transfers language={language} />;
       case 'Approvals':
         return <Approvals language={language} />;
-      case 'Analytics':
-        return <Analytics language={language} />;
-      case 'Employees':
+      case 'DeputyCommissioners':
         return <Employees language={language} />;
-
       default:
         return <Overview language={language} />;
     }
