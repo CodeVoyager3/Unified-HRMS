@@ -40,6 +40,8 @@ const EmployeeDashboard = () => {
     { name: language === 'en' ? 'Week 4' : 'सप्ताह 4', tasks: 22, quality: 92 },
   ];
 
+  
+
   // Sub-components for sections
   const OverviewSection = () => (
     <div className="space-y-6 animate-in fade-in zoom-in duration-300">
@@ -302,6 +304,13 @@ const EmployeeDashboard = () => {
     </div>
   );
 
+  const [subject, setSubject] = useState('');
+  const [description, setDescription] = useState('');
+
+  const handleSubmitIssue = () => {
+    
+  }
+
   const IssuesSection = () => (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -310,13 +319,13 @@ const EmployeeDashboard = () => {
           <form className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{language === 'en' ? 'Subject' : 'विषय'}</label>
-              <input className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 outline-none transition-all" placeholder={language === 'en' ? 'Brief summary of the issue' : 'समस्या का संक्षिप्त सारांश'} />
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 outline-none transition-all" placeholder={language === 'en' ? 'Brief summary of the issue' : 'समस्या का संक्षिप्त सारांश'} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{language === 'en' ? 'Description' : 'विवरण'}</label>
-              <textarea rows="4" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 outline-none transition-all resize-none" placeholder={language === 'en' ? 'Detailed description...' : 'विस्तृत विवरण...'}></textarea>
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="4" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 outline-none transition-all resize-none" placeholder={language === 'en' ? 'Detailed description...' : 'विस्तृत विवरण...'}></textarea>
             </div>
-            <button className="w-full bg-[#6F42C1] hover:bg-[#5a32a3] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all">
+            <button onClick={handleSubmitIssue} className="w-full cursor-pointer bg-[#6F42C1] hover:bg-[#5a32a3] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all">
               <Send size={18} />
               {language === 'en' ? 'Submit Report' : 'रिपोर्ट भेजें'}
             </button>

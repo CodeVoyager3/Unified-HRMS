@@ -38,8 +38,16 @@ const userSchema = new mongoose.Schema({
     },
     Ward: {
         type: Number
+    },
+    joiningDate:{
+        type: Date,
+        default: Date.now
+    },
+    employmentStatus: { 
+    type: String, 
+    enum: ['Permanent', 'Contractual', 'Retired'], 
+    default: 'Permanent'
     }
-
 });
 
 module.exports = mongoose.model('User', userSchema);
