@@ -262,11 +262,16 @@ mongoose.connect(uri)
         console.log('Connected to MongoDB');
 
         try {
-            await Ward.deleteMany({});
-            console.log('Cleared existing wards');
+            // SAFEGUARD: Do not wipe data if we have KML data already!
+            const count = await Ward.countDocuments();
+            if (count > 0) {
+                console.log(`Database already has ${count} wards. Skipping seed to preserve KML/Polygon data.`);
+                process.exit(0);
+            }
 
+            // Only seed if empty
             await Ward.insertMany(wardsData);
-            console.log(`Successfully seeded ${wardsData.length} wards`);
+            console.log(`Successfully seeded ${wardsData.length} wards (Basic Data Only).`);
 
             console.log('Done!');
             process.exit(0);

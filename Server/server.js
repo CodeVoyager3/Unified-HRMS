@@ -16,9 +16,7 @@ app.get('/', (req, res) => {
     res.send("Hello World!")
 })
 
-app.use("/verify", verifyRoute);
-app.use("/employee-issue", require('./src/routes/employeeIssue'));
-app.use("/attendance", attendanceRoute);
+
 
 
 

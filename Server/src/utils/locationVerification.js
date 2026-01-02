@@ -74,39 +74,58 @@ async function verifyLocationInWard(currentLat, currentLon, assignedWard, assign
         };
     }
 
-    let targetLat, targetLon;
-
     try {
-        // Try to find exact ward coordinates from DB
+        // 1. Precise Geofencing Check (Polygon)
+        // Check if the coordinate is strictly inside the assigned ward's polygon
+        const insideWard = await Ward.findOne({
+            wardNumber: String(assignedWard),
+            boundary: {
+                $geoIntersects: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [currentLon, currentLat]
+                    }
+                }
+            }
+        });
+
+        if (insideWard) {
+            return {
+                isValid: true,
+                distance: 0, // Inside the polygon
+                message: `Location verified. You are strictly inside ${insideWard.wardName} (Ward ${assignedWard}).`,
+                wardCoordinates: { latitude: insideWard.latitude, longitude: insideWard.longitude }
+            };
+        }
+
+        // 2. Strict Check Failed
+        // If we are here, the point is NOT inside the polygon.
+        // We fetch the ward details just to return the center point for UI/Reference, 
+        // but the status is strictly INVALID.
         const wardDoc = await Ward.findOne({ wardNumber: String(assignedWard) });
+        let targetLat, targetLon;
+        let dist = 0;
 
         if (wardDoc) {
             targetLat = wardDoc.latitude;
             targetLon = wardDoc.longitude;
+            // distinct from center just for info
+            dist = calculateDistance(currentLat, currentLon, targetLat, targetLon);
         } else {
-            // Fallback to approximate logic
+            // Should not happen if DB is seeded, but handle gracefully
             const wardCoords = getWardCoordinates(assignedWard, assignedZone);
             targetLat = wardCoords.latitude;
             targetLon = wardCoords.longitude;
+            dist = calculateDistance(currentLat, currentLon, targetLat, targetLon);
         }
 
-        const distance = calculateDistance(
-            currentLat,
-            currentLon,
-            targetLat,
-            targetLon
-        );
-
-        const isValid = distance <= allowedRadius;
-
         return {
-            isValid,
-            distance: Math.round(distance),
-            message: isValid
-                ? `Location verified. You are ${Math.round(distance)}m from your assigned ward.`
-                : `Location not verified. You are ${Math.round(distance)}m away from your assigned ward (allowed: ${allowedRadius}m).`,
+            isValid: false,
+            distance: Math.round(dist),
+            message: `Location verification failed. You are outside the boundary of Ward ${assignedWard}.`,
             wardCoordinates: { latitude: targetLat, longitude: targetLon }
         };
+
     } catch (error) {
         console.error('Error in verifyLocationInWard:', error);
         return {
