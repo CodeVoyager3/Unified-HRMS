@@ -76,7 +76,7 @@ router.post('/checkin', async (req, res) => {
             longitude,
             targetWard,
             targetZone,
-            1000 // 1km radius
+            1500 // 1.5km radius
         );
 
         if (!locationVerification.isValid) {
@@ -252,7 +252,7 @@ router.post('/verify-location', async (req, res) => {
             longitude,
             targetWard,
             targetZone,
-            1000 // 1km radius
+            1500 // 1.5km radius
         );
 
         return res.status(200).json({

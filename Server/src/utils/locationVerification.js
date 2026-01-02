@@ -65,7 +65,7 @@ function getWardCoordinates(wardNumber, zone) {
  * @param {number} allowedRadius - Allowed radius in meters (default: 1000m = 1km)
  * @returns {Object} {isValid: boolean, distance: number, message: string}
  */
-async function verifyLocationInWard(currentLat, currentLon, assignedWard, assignedZone, allowedRadius = 1000) {
+async function verifyLocationInWard(currentLat, currentLon, assignedWard, assignedZone, allowedRadius = 1500) {
     if (!assignedWard) {
         return {
             isValid: false,
