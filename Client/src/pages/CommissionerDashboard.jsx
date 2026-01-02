@@ -22,6 +22,9 @@ const AdminDashboard = () => {
   const { language } = useLanguage();
   const [activeMenu, setActiveMenu] = useState('Overview');
   const { signOut } = useClerk();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   // Sidebar menu items
   const menuItems = [
@@ -51,11 +54,15 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
-      <Navbar />
+      <Navbar onSidebarToggle={toggleSidebar} />
 
       <div className="flex">
         {/* Sidebar - Static */}
-        <aside className="w-64 bg-[#1e1b4b] dark:bg-[#0f0d24] h-[calc(100vh-104px)] sticky top-[104px] transition-all duration-300 hidden lg:block overflow-y-auto custom-scrollbar">
+        <aside className={`
+          w-64 bg-[#1e1b4b] dark:bg-[#0f0d24] h-[calc(100vh-104px)] 
+          fixed lg:sticky top-[104px] left-0 transition-transform duration-300 z-40 overflow-y-auto custom-scrollbar
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
           <div className="p-4">
             {/* Logo/Title */}
             <div className="flex items-center gap-3 mb-6 px-2">

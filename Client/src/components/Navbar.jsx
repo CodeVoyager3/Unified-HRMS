@@ -4,7 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate, NavLink } from 'react-router-dom'
 
-const Navbar = () => {
+const Navbar = ({ onSidebarToggle }) => {
     const navigate = useNavigate();
     const { user, isSignedIn } = useUser();
     const { openSignIn } = useClerk();
@@ -86,6 +86,16 @@ const Navbar = () => {
             {/* Main Bar */}
             <div className="bg-white dark:bg-gray-900 py-2 px-4 md:px-6 lg:px-12 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 transition-colors duration-300">
                 <div className="flex items-center gap-3 md:gap-5">
+                    {/* Sidebar Toggle Button - Only visible when function passed & on mobile/tablet */}
+                    {onSidebarToggle && (
+                        <button
+                            onClick={onSidebarToggle}
+                            className="lg:hidden p-2 -ml-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                            aria-label="Toggle Sidebar"
+                        >
+                            <Menu size={24} />
+                        </button>
+                    )}
                     <img src="/embelem.png" alt="State Emblem of India" className="h-10 md:h-14 object-contain brightness-100 dark:brightness-100" />
                     <div className="h-8 md:h-10 w-[1px] bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
                     <div onClick={() => navigate('/')} className="cursor-pointer flex flex-col">
