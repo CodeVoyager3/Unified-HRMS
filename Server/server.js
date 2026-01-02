@@ -21,6 +21,7 @@ app.use("/employee-issue", require('./src/routes/employeeIssue'));
 app.use("/attendance", attendanceRoute);
 
 
+
 app.listen(PORT, () => {
     console.log(`Server running on port http://localhost:${PORT}`);
 });

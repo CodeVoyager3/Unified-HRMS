@@ -1,3 +1,5 @@
+const Ward = require('../models/Ward');
+
 /**
  * Calculate distance between two coordinates using Haversine formula
  * @param {number} lat1 - Latitude of first point
@@ -29,11 +31,23 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
  * @returns {Object} {latitude, longitude}
  */
 function getWardCoordinates(wardNumber, zone) {
-    // Delhi center coordinates (approximate)
+    // Verified Ward Coordinates (add more as needed)
+    const WARD_COORDINATES = {
+        '215': { latitude: 28.669435, longitude: 77.287206 }, // Shahdara, Bholanath Nagar
+        // Add other wards here manually...
+    };
+
+    // Check if we have verified coordinates for this ward
+    const wardKey = String(wardNumber);
+    if (WARD_COORDINATES[wardKey]) {
+        return WARD_COORDINATES[wardKey];
+    }
+
+    // Fallback: Delhi center coordinates (approximate)
     const delhiCenter = { latitude: 28.6139, longitude: 77.2090 };
 
-    // Simplified ward mapping - each ward is offset slightly
-    // In production, use actual ward boundary data from GIS
+    // Simplified ward mapping - each ward is offset slightly (for demo only)
+    // In production, use actual ward boundary data from GIS or database
     const wardOffset = wardNumber * 0.01; // Small offset per ward
 
     return {
@@ -51,7 +65,7 @@ function getWardCoordinates(wardNumber, zone) {
  * @param {number} allowedRadius - Allowed radius in meters (default: 1000m = 1km)
  * @returns {Object} {isValid: boolean, distance: number, message: string}
  */
-function verifyLocationInWard(currentLat, currentLon, assignedWard, assignedZone, allowedRadius = 25000) {
+async function verifyLocationInWard(currentLat, currentLon, assignedWard, assignedZone, allowedRadius = 1000) {
     if (!assignedWard) {
         return {
             isValid: false,
@@ -60,24 +74,47 @@ function verifyLocationInWard(currentLat, currentLon, assignedWard, assignedZone
         };
     }
 
-    const wardCoords = getWardCoordinates(assignedWard, assignedZone);
-    const distance = calculateDistance(
-        currentLat,
-        currentLon,
-        wardCoords.latitude,
-        wardCoords.longitude
-    );
+    let targetLat, targetLon;
 
-    const isValid = distance <= allowedRadius;
+    try {
+        // Try to find exact ward coordinates from DB
+        const wardDoc = await Ward.findOne({ wardNumber: String(assignedWard) });
 
-    return {
-        isValid,
-        distance: Math.round(distance),
-        message: isValid
-            ? `Location verified. You are ${Math.round(distance)}m from your assigned ward.`
-            : `Location not verified. You are ${Math.round(distance)}m away from your assigned ward (allowed: ${allowedRadius}m).`,
-        wardCoordinates: wardCoords
-    };
+        if (wardDoc) {
+            targetLat = wardDoc.latitude;
+            targetLon = wardDoc.longitude;
+        } else {
+            // Fallback to approximate logic
+            const wardCoords = getWardCoordinates(assignedWard, assignedZone);
+            targetLat = wardCoords.latitude;
+            targetLon = wardCoords.longitude;
+        }
+
+        const distance = calculateDistance(
+            currentLat,
+            currentLon,
+            targetLat,
+            targetLon
+        );
+
+        const isValid = distance <= allowedRadius;
+
+        return {
+            isValid,
+            distance: Math.round(distance),
+            message: isValid
+                ? `Location verified. You are ${Math.round(distance)}m from your assigned ward.`
+                : `Location not verified. You are ${Math.round(distance)}m away from your assigned ward (allowed: ${allowedRadius}m).`,
+            wardCoordinates: { latitude: targetLat, longitude: targetLon }
+        };
+    } catch (error) {
+        console.error('Error in verifyLocationInWard:', error);
+        return {
+            isValid: false,
+            distance: null,
+            message: 'Error verifying location: ' + error.message
+        };
+    }
 }
 
 module.exports = {

@@ -71,7 +71,7 @@ router.post('/checkin', async (req, res) => {
             });
         }
 
-        const locationVerification = verifyLocationInWard(
+        const locationVerification = await verifyLocationInWard(
             latitude,
             longitude,
             targetWard,
@@ -247,7 +247,7 @@ router.post('/verify-location', async (req, res) => {
             });
         }
 
-        const locationVerification = verifyLocationInWard(
+        const locationVerification = await verifyLocationInWard(
             latitude,
             longitude,
             targetWard,
