@@ -30,11 +30,22 @@ const DeputyCommissionerDashboard = () => {
     if (!storedData) {
       navigate('/verify-employee');
     } else {
-      const userData = JSON.parse(storedData);
-      if (userData.Zone) {
-        // Normalize zone name to match our database (e.g., "Rohini" -> "Rohini Zone")
-        const normalizedZone = userData.Zone.includes('Zone') ? userData.Zone : `${userData.Zone} Zone`;
-        setDcZone(normalizedZone);
+      try {
+        const userData = JSON.parse(storedData);
+        // RBAC: Strict Role Check
+        if (userData.role !== 'Deputy Commissioner') {
+          console.warn("Unauthorized access attempt: Role mismatch");
+          navigate('/verify-employee');
+          return;
+        }
+
+        if (userData.Zone) {
+          // Normalize zone name to match our database (e.g., "Rohini" -> "Rohini Zone")
+          const normalizedZone = userData.Zone.includes('Zone') ? userData.Zone : `${userData.Zone} Zone`;
+          setDcZone(normalizedZone);
+        }
+      } catch (e) {
+        navigate('/verify-employee');
       }
     }
   }, [navigate]);

@@ -45,7 +45,7 @@ const EmployeeVerification = () => {
                 setTimeout(() => {
                     const role = data.user.role;
                     if (role === 'Commissioner') navigate('/admin');
-                    else if (role === 'Deputy Commissioner') navigate('/manager');
+                    else if (role === 'Deputy Commissioner') navigate('/deputy-commissioner');
                     else if (role === 'Sanitary Inspector') navigate('/sanitary-inspector');
                     else navigate('/employee');
                 }, 800);

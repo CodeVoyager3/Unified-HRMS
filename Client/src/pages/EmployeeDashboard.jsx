@@ -47,6 +47,14 @@ const EmployeeDashboard = () => {
     } else {
       try {
         const parsedUser = JSON.parse(storedUser);
+
+        // RBAC: Strict Role Check
+        if (parsedUser.role !== 'Employee') {
+          console.warn("Unauthorized access attempt: Role mismatch");
+          navigate('/verify-employee');
+          return;
+        }
+
         setUserData(parsedUser);
         if (parsedUser.employeeId) setEmployeeId(parsedUser.employeeId);
       } catch (e) {

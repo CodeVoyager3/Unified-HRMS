@@ -32,7 +32,14 @@ const SanitaryInspectorDashboard = () => {
       navigate('/verify-employee');
     } else {
       try {
-        setUserData(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        // RBAC: Strict Role Check
+        if (parsedUser.role !== 'Sanitary Inspector') {
+          console.warn("Unauthorized access attempt: Role mismatch");
+          navigate('/verify-employee');
+          return;
+        }
+        setUserData(parsedUser);
       } catch (e) {
         navigate('/verify-employee');
       }
