@@ -52,6 +52,11 @@ const EmployeeDashboard = () => {
   // Tasks State
   const [myTasks, setMyTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [proofLink, setProofLink] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
   const fetchMyTasks = async () => {
     if (!employeeId) return;
@@ -68,22 +73,41 @@ const EmployeeDashboard = () => {
     if (activeTab === 'tasks') fetchMyTasks();
   }, [activeTab, employeeId]);
 
-  const handleCompleteTask = async (taskId) => {
-    const link = prompt("Enter Proof Image URL (e.g., https://imgur.com/example.jpg):");
-    if (!link) return;
+  const openTaskModal = (task) => {
+    setSelectedTask(task);
+    setProofLink('');
+    setTaskDescription('');
+    setShowTaskModal(true);
+  };
 
+  const handleTaskSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedTask) return;
+
+    setIsSubmittingTask(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/task/complete/${taskId}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/task/complete/${selectedTask._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proofImage: link })
+        body: JSON.stringify({
+          proofImage: proofLink,
+          completionDescription: taskDescription
+        })
       });
       const data = await response.json();
       if (data.success) {
-        alert("Task submitted for verification!");
+        alert(language === 'en' ? "Task submitted for verification!" : "कार्य सत्यापन के लिए प्रस्तुत किया गया!");
+        setShowTaskModal(false);
         fetchMyTasks();
+      } else {
+        alert(data.message || "Failed to submit task");
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      alert("Server Error");
+    } finally {
+      setIsSubmittingTask(false);
+    }
   };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -165,7 +189,7 @@ const EmployeeDashboard = () => {
         const chartData = data.analytics.map((week, index) => ({
           name: language === 'en' ? `Week ${week.weekNumber} ` : `सप्ताह ${week.weekNumber} `,
           tasks: week.tasksCompleted,
-          quality: week.quality || week.attendancePercentage
+          quality: week.weekCredit || 0
         }));
         setPerformanceData(chartData);
       }
@@ -276,6 +300,62 @@ const EmployeeDashboard = () => {
           <div className="mt-4 text-sm text-emerald-100">
             {issueCount === 0 ? (language === 'en' ? 'All clear!' : 'सब ठीक है!') : (language === 'en' ? 'There are open issues' : 'खुली समस्याएं हैं')}
           </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+          {language === 'en' ? 'Quick Actions' : 'त्वरित क्रियाएं'}
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button
+            onClick={() => setActiveTab('attendance')}
+            className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-all group"
+          >
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+              <MapPin size={24} />
+            </div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
+              {language === 'en' ? 'Check In / Out' : 'चेक इन / आउट'}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('payroll')}
+            className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
+          >
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+              <Banknote size={24} />
+            </div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
+              {language === 'en' ? 'View Payslip' : 'पेस्लिप देखें'}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-amber-500 dark:hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-all group"
+          >
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+              <ClipboardList size={24} />
+            </div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
+              {language === 'en' ? 'My Tasks' : 'मेरे कार्य'}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('issues')}
+            className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-rose-500 dark:hover:border-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-all group"
+          >
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+              <AlertCircle size={24} />
+            </div>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
+              {language === 'en' ? 'Report Issue' : 'समस्या रिपोर्ट करें'}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -1133,7 +1213,9 @@ const EmployeeDashboard = () => {
           employeeId: user.employeeId,
           title: subject,
           description: description,
-          category: category
+          category: category,
+          ward: user.Ward,
+          zone: user.Zone
         })
       });
 
@@ -1469,7 +1551,7 @@ const EmployeeDashboard = () => {
             <div className="flex items-end md:items-center">
               {task.status === 'Pending' ? (
                 <button
-                  onClick={() => handleCompleteTask(task._id)}
+                  onClick={() => openTaskModal(task)}
                   className="px-5 py-2.5 bg-[#6F42C1] text-white rounded-xl text-sm font-bold hover:bg-[#5a32a3] shadow-lg shadow-purple-500/20 transition-all flex items-center gap-2"
                 >
                   <Send size={16} /> {language === 'en' ? 'Submit Proof' : 'प्रमाण भेजें'}
@@ -1483,7 +1565,88 @@ const EmployeeDashboard = () => {
           </div>
         ))}
       </div>
-    </div>
+
+
+      {/* Task Submission Modal */}
+      {
+        showTaskModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 text-left cursor-default">
+            <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                  <ClipboardList className="text-purple-600" />
+                  {language === 'en' ? 'Submit Task Completion' : 'कार्य पूर्णता जमा करें'}
+                </h3>
+                <button
+                  onClick={() => setShowTaskModal(false)}
+                  className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-500"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleTaskSubmit} className="p-6 space-y-4">
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800 mb-4">
+                  <p className="text-xs font-bold text-purple-600 dark:text-purple-300 uppercase mb-1">Task</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">{selectedTask?.title}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {language === 'en' ? 'Proof Link (Google Drive/Image URL)' : 'प्रमाण लिंक (Google Drive/Image URL)'}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FileText size={18} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="url"
+                      required
+                      value={proofLink}
+                      onChange={(e) => setProofLink(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white"
+                      placeholder="https://drive.google.com/..."
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {language === 'en' ? 'Description / Notes' : 'विवरण / नोट्स'}
+                  </label>
+                  <textarea
+                    required
+                    rows="4"
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    className="w-full p-4 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 outline-none resize-none text-gray-900 dark:text-white"
+                    placeholder={language === 'en' ? 'Describe the work done...' : 'किए गए कार्य का वर्णन करें...'}
+                  ></textarea>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowTaskModal(false)}
+                    className="flex-1 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {language === 'en' ? 'Cancel' : 'रद्द करें'}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingTask}
+                    className="flex-1 py-3 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 shadow-lg shadow-purple-500/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingTask ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
+                    {language === 'en' ? 'Submit Task' : 'जमा करें'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 
   const renderContent = () => {

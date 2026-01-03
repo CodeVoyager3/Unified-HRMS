@@ -246,7 +246,13 @@ const SISpecialTasks = ({ language = 'en', currentUser }) => {
                             {selectedTask.proofImage ? (
                                 <div className="mt-4">
                                     <p className="text-sm font-bold mb-2 dark:text-white">Proof of Work</p>
-                                    <img src={selectedTask.proofImage} alt="Proof" className="w-full h-48 object-cover rounded-xl border-2 border-gray-200 dark:border-gray-700" />
+                                    <img src={selectedTask.proofImage} alt="Proof" className="w-full h-48 object-cover rounded-xl border-2 border-gray-200 dark:border-gray-700 mb-3" />
+                                    {selectedTask.completionDescription && (
+                                        <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
+                                            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Employee Notes</p>
+                                            <p className="text-sm text-gray-800 dark:text-white italic">"{selectedTask.completionDescription}"</p>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-900/50 rounded-xl text-center text-gray-500 text-sm italic">

@@ -53,12 +53,13 @@ router.get('/employee/:empId', async (req, res) => {
 // PUT: Mark task as completed (Upload Proof)
 router.put('/complete/:id', async (req, res) => {
     try {
-        const { proofImage } = req.body;
+        const { proofImage, completionDescription } = req.body;
         const task = await SpecialTask.findByIdAndUpdate(
             req.params.id,
             {
                 status: 'Completed',
                 proofImage,
+                completionDescription,
                 completedAt: new Date()
             },
             { new: true }

@@ -6,15 +6,18 @@ const Users = require('../models/User');
 // POST: Report a new issue
 router.post('/', async (req, res) => {
     try {
-        const { employeeId, title, description, category } = req.body;
+        const { employeeId, title, description, category, ward, zone } = req.body;
         if (!employeeId || !title || !description) {
             return res.status(400).json({ message: 'Employee ID and issue are required' });
         }
 
-        // Fetch user to get ward
+        // Fetch user to get ward (fallback)
         console.log(`[EmployeeIssue] Reporting issue for ID: ${employeeId}`);
         const user = await Users.findOne({ employeeId });
-        console.log(`[EmployeeIssue] User found: ${user ? 'Yes' : 'No'}, Ward: ${user?.Ward}, Category: ${category}`);
+
+        // Determine final Ward
+        const finalWard = ward || (user ? user.Ward : null);
+        console.log(`[EmployeeIssue] Ward Source: ${ward ? 'Body' : 'DB'}, Final Ward: ${finalWard}, Category: ${category}`);
 
         const employeeIssue = new EmployeeIssue({
             Eid: employeeId,
@@ -22,7 +25,7 @@ router.post('/', async (req, res) => {
             Description: description,
             Status: 'Pending',
             Date: new Date(),
-            ward: user ? user.Ward : null,
+            ward: finalWard,
             category: category || 'General'
         });
 

@@ -13,6 +13,7 @@ const specialTaskSchema = new mongoose.Schema({
         default: 'Pending'
     },
     proofImage: { type: String },
+    completionDescription: { type: String }, // Notes from employee upon completion
     fineAmount: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
     completedAt: { type: Date }
