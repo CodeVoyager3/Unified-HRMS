@@ -13,6 +13,8 @@ import EmployeeVerification from './pages/EmployeeVerification'
 import SanitaryInspectorDashboard from './pages/SanitaryInspectorDashboard'
 import RecruitmentPage from './pages/RecruitmentPage'
 import AuthorityDashboard from './pages/AuthorityDashboard'
+import ChatAssistant from './components/ChatAssistant'
+
 
 
 function App() {
@@ -33,6 +35,7 @@ function App() {
           <Route path="/notices" element={<Notices />} />
           <Route path="/about-us" element={<AboutUs />} />
         </Routes>
+        <ChatAssistant />
       </BrowserRouter>
     </>
   )

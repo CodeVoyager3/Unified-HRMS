@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
-import { Search, ChevronDown, Moon, Sun, Accessibility, Menu, X, Languages } from 'lucide-react';
+import { ChevronDown, Moon, Sun, Accessibility, Menu, X, Languages } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { useFontSize } from '../context/FontSizeContext';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate, NavLink } from 'react-router-dom'
 
@@ -11,6 +12,7 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
     const { openSignIn } = useClerk();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { language, toggleLanguage, t } = useLanguage();
+    const { increaseFontSize, decreaseFontSize, resetFontSize } = useFontSize();
     const { theme, setTheme } = useTheme();
 
     const toggleTheme = () => {
@@ -38,13 +40,13 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
                 </div>
 
                 <div className="flex items-center gap-4 text-xs">
-                    <a href="#main" className="hover:underline hidden lg:block font-medium">{t.skipMain}</a>
+
 
                     {/* Accessibility Tools */}
                     <div className="hidden sm:flex items-center gap-2 border-l border-white/40 pl-3" aria-label="Font Size Controls">
-                        <button className="hover:bg-white/10 px-1 rounded" aria-label="Decrease Font Size">A-</button>
-                        <button className="bg-white/20 px-1.5 rounded font-bold" aria-label="Reset Font Size">A</button>
-                        <button className="hover:bg-white/10 px-1 rounded" aria-label="Increase Font Size">A+</button>
+                        <button onClick={decreaseFontSize} className="hover:bg-white/10 px-1 rounded cursor-pointer" aria-label="Decrease Font Size">A-</button>
+                        <button onClick={resetFontSize} className="bg-white/20 px-1.5 rounded font-bold cursor-pointer" aria-label="Reset Font Size">A</button>
+                        <button onClick={increaseFontSize} className="hover:bg-white/10 px-1 rounded cursor-pointer" aria-label="Increase Font Size">A+</button>
                     </div>
 
                     <div className="flex items-center gap-3 border-l border-white/40 pl-3">
@@ -97,24 +99,39 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
 
                 {/* Desktop Nav - Focused on "Online Services" */}
                 <div className="hidden lg:flex items-center gap-6 xl:gap-8 font-medium text-gray-700 dark:text-gray-200 text-sm xl:text-base">
-                    <NavLink to="/notices" className={({ isActive }) => `transition-colors py-1 border-b-2 ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] border-[#6F42C1] dark:border-[#a074f0] font-semibold' : 'border-transparent hover:text-[#6F42C1] dark:hover:text-[#a074f0]'}`}>{t.publicNotices}</NavLink>
-                    <NavLink to="/recruitment" className={({ isActive }) => `group flex items-center gap-1 hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors cursor-pointer py-1 ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] font-semibold' : ''}`}>
-                        <span>{t.recruitmentPortal}</span>
-                    </NavLink>
-                    <div onClick={handleEmployeeCornerClick} className="hover:text-[#6F42C1] dark:hover:text-[#a074f0] transition-colors py-1 cursor-pointer">{t.employeeCorner}</div>
-                    <NavLink to="/about-us" className={({ isActive }) => `transition-colors py-1 border-b-2 ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] border-[#6F42C1] dark:border-[#a074f0] font-semibold' : 'border-transparent hover:text-[#6F42C1] dark:hover:text-[#a074f0] hover:border-[#6F42C1] dark:hover:border-[#a074f0]'}`}>{t.aboutUs}</NavLink>
+                    {/* Common NavLink Stylings */}
+                    {[
+                        { to: "/notices", label: t.publicNotices },
+                        { to: "/recruitment", label: t.recruitmentPortal },
+                        {
+                            to: "/verify-employee",
+                            label: t.employeeCorner,
+                            onClick: (e) => {
+                                if (!isSignedIn) {
+                                    e.preventDefault();
+                                    openSignIn();
+                                }
+                            }
+                        },
+                        { to: "/about-us", label: t.aboutUs }
+                    ].map((link, index) => (
+                        <NavLink
+                            key={index}
+                            to={link.to}
+                            onClick={link.onClick}
+                            className={({ isActive }) => `transition-colors py-1 border-b-2 ${isActive
+                                ? 'text-[#6F42C1] dark:text-[#a074f0] border-[#6F42C1] dark:border-[#a074f0] font-semibold'
+                                : 'border-transparent hover:text-[#6F42C1] dark:hover:text-[#a074f0] hover:border-[#6F42C1] dark:hover:border-[#a074f0]'
+                                }`}
+                        >
+                            {link.label}
+                        </NavLink>
+                    ))}
                 </div>
 
                 {/* Actions - Grouped for Clarity */}
                 <div className="hidden lg:flex items-center gap-4">
-                    <div className="relative group">
-                        <input
-                            type="text"
-                            placeholder={t.search}
-                            className="pl-8 pr-4 py-1.5 border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-full text-sm focus:outline-none focus:border-[#6F42C1] dark:focus:border-[#a074f0] w-40 xl:w-56 transition-all"
-                        />
-                        <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-                    </div>
+
                     <SignedIn>
                         <UserButton />
                     </SignedIn>
@@ -148,10 +165,7 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
             {/* Mobile Menu Dropdown */}
             {isMenuOpen && (
                 <div className="lg:hidden absolute top-full left-0 w-full bg-white dark:bg-gray-900 shadow-xl border-t border-gray-100 dark:border-gray-800 z-50 flex flex-col p-4 gap-4 transition-all duration-300 text-gray-800 dark:text-gray-100">
-                    <div className="relative mb-2">
-                        <input type="text" placeholder={t.searchPlaceholder} className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg focus:outline-none border dark:border-gray-700 dark:text-white" />
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    </div>
+
                     <a href="" className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between">{t.onlineServices} <ChevronDown size={16} /></a>
                     <NavLink to="/notices" className={({ isActive }) => `font-medium py-3 border-b border-gray-50 dark:border-gray-800 ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] bg-purple-50 dark:bg-purple-900/20 pl-2 rounded-r' : ''}`}>{t.publicNotices}</NavLink>
                     <div onClick={handleEmployeeCornerClick} className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between cursor-pointer">{t.employeeCorner} <ChevronDown size={16} /></div>
