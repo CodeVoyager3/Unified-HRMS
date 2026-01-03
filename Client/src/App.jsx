@@ -11,6 +11,8 @@ import Notices from './pages/Notices'
 import EmployeeDashboard from './pages/EmployeeDashboard'
 import EmployeeVerification from './pages/EmployeeVerification'
 import SanitaryInspectorDashboard from './pages/SanitaryInspectorDashboard'
+import RecruitmentPage from './pages/RecruitmentPage'
+import AuthorityDashboard from './pages/AuthorityDashboard'
 
 
 function App() {
@@ -19,6 +21,8 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/authority-review" element={<AuthorityDashboard />} />
+          <Route path="/recruitment" element={<ProtectedRoute> <RecruitmentPage /> </ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute> <Dashboard /> </ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute> <AdminDashboard /> </ProtectedRoute>} />
           <Route path="/deputy-commissioner" element={<ProtectedRoute> <DeputyCommissionerDashboard /> </ProtectedRoute>} />
