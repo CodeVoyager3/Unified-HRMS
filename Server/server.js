@@ -28,6 +28,8 @@ app.use("/verify", verifyRoute);
 app.use("/employee-issue", require('./src/routes/employeeIssue'));
 app.use("/attendance", attendanceRoute);
 app.use("/payroll", require('./src/routes/payroll'));
+app.use("/credit", require('./src/routes/credit'));
+app.use("/inspector", require('./src/routes/inspector'));
 app.use("/api/recruitment", require('./src/routes/recruitmentRoutes'));
 app.use("/api/verification", require('./src/routes/verificationRoutes'));
 

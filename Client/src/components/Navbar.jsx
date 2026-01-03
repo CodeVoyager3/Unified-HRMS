@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useClerk } from '@clerk/clerk-react';
 import { useNavigate, NavLink } from 'react-router-dom'
 
-const Navbar = ({ onSidebarToggle }) => {
+const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
     const navigate = useNavigate();
     const { user, isSignedIn } = useUser();
     const { openSignIn } = useClerk();
@@ -77,11 +77,11 @@ const Navbar = ({ onSidebarToggle }) => {
             {/* Main Bar */}
             <div className="bg-white dark:bg-gray-900 py-2 px-4 md:px-6 lg:px-12 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 transition-colors duration-300">
                 <div className="flex items-center gap-3 md:gap-5">
-                    {/* Sidebar Toggle Button - Only visible when function passed & on mobile/tablet */}
+                    {/* Sidebar Toggle Button */}
                     {onSidebarToggle && (
                         <button
                             onClick={onSidebarToggle}
-                            className="lg:hidden p-2 -ml-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                            className={`${alwaysShowToggle ? '' : 'lg:hidden'} p-2 -ml-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md`}
                             aria-label="Toggle Sidebar"
                         >
                             <Menu size={24} />

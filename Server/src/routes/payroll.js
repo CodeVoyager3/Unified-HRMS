@@ -238,5 +238,50 @@ router.get('/structure/:employeeId', async (req, res) => {
     }
 });
 
+// GET /payroll/ward/:wardId
+// Get payroll summary for all employees in a ward
+router.get('/ward/:wardId', async (req, res) => {
+    try {
+        const { wardId } = req.params;
+        const wardNum = parseInt(wardId);
+        const users = await User.find({ Ward: wardNum, role: { $in: ['Worker', 'Staff'] } });
+
+        const summary = await Promise.all(users.map(async (user) => {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            endOfToday.setHours(23, 59, 59, 999);
+
+            const attendanceRecords = await Attendance.find({
+                employeeId: user.employeeId,
+                date: { $gte: startOfMonth, $lte: endOfToday }
+            });
+
+            const daysElapsed = now.getDate();
+            const presentDays = attendanceRecords.filter(r => r.status === 'present' || r.checkInTime).length;
+            const attendancePerm = daysElapsed > 0 ? Math.round((presentDays / daysElapsed) * 100) : 0;
+
+            const salaryStructure = calculateExpectedSalary(user, presentDays, daysElapsed, 0);
+
+            return {
+                id: user.employeeId,
+                name: user.firstName + ' ' + user.lastName,
+                role: user.designation || 'Worker',
+                performance: attendancePerm,
+                salary: salaryStructure.projectedNet.toLocaleString(),
+                overtime: '0 hrs',
+                attendance: attendancePerm + '%',
+                phone: user.phoneNumber,
+                baseSalary: (user.baseSalary || 15000).toLocaleString()
+            };
+        }));
+
+        res.json({ success: true, employees: summary });
+    } catch (error) {
+        console.error('Error fetching ward payroll:', error);
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+});
+
 module.exports = router;
 

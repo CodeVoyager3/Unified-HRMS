@@ -429,6 +429,8 @@ router.get('/employee/:employeeId', async (req, res) => {
     }
 });
 
+const Credit = require('../models/Credit');
+
 /**
  * GET /attendance/analytics/:employeeId
  * Get weekly attendance analytics for performance chart
@@ -440,6 +442,16 @@ router.get('/analytics/:employeeId', async (req, res) => {
 
         const now = new Date();
         const analytics = [];
+
+        // Fetch credit data for current month
+        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentYear = now.getFullYear();
+
+        const creditDoc = await Credit.findOne({
+            employeeId,
+            month: currentMonth,
+            year: currentYear
+        });
 
         // Calculate for each week going backwards
         for (let i = weeks - 1; i >= 0; i--) {
@@ -464,15 +476,30 @@ router.get('/analytics/:employeeId', async (req, res) => {
             const totalDays = 7;
             const attendancePercentage = ((presentDays / totalDays) * 100).toFixed(1);
 
+            // Map credit based on week number (1-4)
+            // Analytics loop: i=3 (Week 1), i=2 (Week 2), i=1 (Week 3), i=0 (Week 4) roughly
+            // Wait, loop is i = weeks-1 down to 0. 
+            // If weeks=4: i=3 (oldest), i=0 (newest/current).
+            // WeekNumber in response is weeks - i => 4-3=1, 4-0=4.
+            const weekNum = weeks - i;
+            let weeklyCredit = 0;
+            if (creditDoc) {
+                if (weekNum === 1) weeklyCredit = creditDoc.week1 || 0;
+                if (weekNum === 2) weeklyCredit = creditDoc.week2 || 0;
+                if (weekNum === 3) weeklyCredit = creditDoc.week3 || 0;
+                if (weekNum === 4) weeklyCredit = creditDoc.week4 || 0;
+            }
+
             analytics.push({
-                weekNumber: weeks - i,
+                weekNumber: weekNum,
                 weekStart: weekStart.toISOString().split('T')[0],
                 weekEnd: weekEnd.toISOString().split('T')[0],
                 presentDays,
                 totalDays,
                 attendancePercentage: parseFloat(attendancePercentage),
-                tasksCompleted: presentDays, // Using present days as tasks for now
-                quality: parseFloat(attendancePercentage)
+                tasksCompleted: presentDays,
+                quality: parseFloat(attendancePercentage),
+                weekCredit: weeklyCredit
             });
         }
 
@@ -488,6 +515,74 @@ router.get('/analytics/:employeeId', async (req, res) => {
             message: 'Internal server error',
             error: error.message
         });
+    }
+});
+
+/**
+ * GET /attendance/ward/:wardId/today
+ * Get today's attendance checklist for all employees in a ward
+ */
+router.get('/ward/:wardId/today', async (req, res) => {
+    try {
+        const { wardId } = req.params;
+        const wardNum = parseInt(wardId);
+
+        // 1. Get all employees in Ward
+        const employees = await User.find({ Ward: wardNum, role: { $in: ['Worker', 'Staff'] } });
+
+        // 2. Get today's attendance records
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const employeeIds = employees.map(e => e.employeeId);
+        const attendanceRecords = await Attendance.find({
+            employeeId: { $in: employeeIds },
+            date: {
+                $gte: today,
+                $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+            }
+        });
+
+        // 3. Map to DTO
+        const attendanceList = employees.map(emp => {
+            const record = attendanceRecords.find(r => r.employeeId === emp.employeeId);
+            let status = 'Absent';
+            let checkIn = '--';
+
+            if (record) {
+                if (record.status === 'present' || record.checkInTime) {
+                    status = 'Present';
+                    // Check if late (after 9:15 AM)
+                    const checkInTime = new Date(record.checkInTime);
+                    const limitTime = new Date(today);
+                    limitTime.setHours(9, 15, 0);
+
+                    if (checkInTime > limitTime) {
+                        status = 'Late';
+                    }
+
+                    checkIn = checkInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                } else if (record.status === 'leave') {
+                    status = 'On Leave';
+                }
+            }
+
+            return {
+                id: emp.employeeId,
+                name: emp.name,
+                role: emp.role || 'Worker',
+                location: record?.location?.address || `Ward ${wardNum}`,
+                status: status,
+                checkIn: checkIn,
+                image: `https://ui-avatars.com/api/?name=${emp.name.replace(' ', '+')}&background=random`
+            };
+        });
+
+        res.json({ success: true, attendance: attendanceList });
+
+    } catch (error) {
+        console.error("Error fetching ward attendance:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 });
 

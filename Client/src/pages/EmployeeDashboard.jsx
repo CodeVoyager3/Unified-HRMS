@@ -17,9 +17,13 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Loader
+  Loader,
+  Download,
+  FileText
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, ComposedChart, Line, Legend } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const EmployeeDashboard = () => {
   const { user } = useUser();
@@ -53,12 +57,19 @@ const EmployeeDashboard = () => {
 
   useEffect(() => {
     const fetchStructure = async () => {
-      if (!employeeId) return;
+      if (!employeeId) {
+        console.log("fetchStructure: No employeeId");
+        return;
+      }
       try {
+        console.log("Fetching salary structure for:", employeeId);
         const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/payroll/structure/${employeeId}`);
         const data = await response.json();
+        console.log("Salary structure data:", data);
         if (data.success) {
           setSalaryStructure(data.structure);
+        } else {
+          console.error("Failed to fetch structure:", data.message);
         }
       } catch (error) {
         console.error("Error fetching salary structure:", error);
@@ -114,7 +125,7 @@ const EmployeeDashboard = () => {
       if (data.success && data.analytics) {
         // Transform analytics data for chart
         const chartData = data.analytics.map((week, index) => ({
-          name: language === 'en' ? `Week ${week.weekNumber}` : `सप्ताह ${week.weekNumber}`,
+          name: language === 'en' ? `Week ${week.weekNumber} ` : `सप्ताह ${week.weekNumber} `,
           tasks: week.tasksCompleted,
           quality: week.quality || week.attendancePercentage
         }));
@@ -173,6 +184,7 @@ const EmployeeDashboard = () => {
 
   useEffect(() => {
     fetchIssueCount();
+    fetchPerformanceAnalytics();
   }, [setActiveTab]);
 
 
@@ -208,8 +220,8 @@ const EmployeeDashboard = () => {
           </div>
           <div className="mt-4 text-sm text-pink-100">
             {language === 'en'
-              ? `Estimated: ₹${salaryStructure ? salaryStructure.projectedNet.toLocaleString() : '...'}`
-              : `अनुमानित: ₹${salaryStructure ? salaryStructure.projectedNet.toLocaleString() : '...'}`}
+              ? `Estimated: ₹${salaryStructure ? salaryStructure.projectedNet.toLocaleString() : '...'} `
+              : `अनुमानित: ₹${salaryStructure ? salaryStructure.projectedNet.toLocaleString() : '...'} `}
           </div>
         </div>
 
@@ -234,30 +246,186 @@ const EmployeeDashboard = () => {
         <h3 className="text-lg font-semibold mb-4 text-gray-700 dark:text-gray-200">{language === 'en' ? 'Performance Overview' : 'प्रदर्शन अवलोकन'}</h3>
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={performanceData}>
-              <defs>
-                <linearGradient id="colorQuality" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="name" />
-              <YAxis />
+            <ComposedChart data={performanceData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} />
+              <YAxis yAxisId="left" orientation="left" stroke="#6F42C1" domain={[0, 7]} allowDecimals={false} hide />
+              <YAxis yAxisId="right" orientation="right" stroke="#10B981" domain={[0, 10]} hide />
               <Tooltip
-                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                formatter={(value, name) => [value, name]}
               />
-              <Area type="monotone" dataKey="quality" stroke="#8884d8" fillOpacity={1} fill="url(#colorQuality)" />
-            </AreaChart>
+              <Legend />
+              <Bar
+                yAxisId="left"
+                dataKey="tasks"
+                name={language === 'en' ? 'Attendance (Days)' : 'उपस्थिति (दिन)'}
+                fill="#6F42C1"
+                radius={[4, 4, 0, 0]}
+                barSize={20}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="quality"
+                name={language === 'en' ? 'Credit Score' : 'क्रेडिट स्कोर'}
+                stroke="#10B981"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
     </div>
   );
 
+  // Helper to sum values if object
+  const calculateTotal = (val) => {
+    if (typeof val === 'number') return val;
+    if (typeof val === 'object' && val !== null) {
+      return Object.values(val).reduce((sum, v) => sum + (Number(v) || 0), 0);
+    }
+    return 0;
+  };
+
+  const downloadSalarySlip = () => {
+    console.log("Attempting to download slip...");
+    if (!salaryStructure) {
+      console.error("No salary structure available.");
+      alert("Salary data not available yet.");
+      return;
+    }
+    if (!user) {
+      console.error("No user data available.");
+      return;
+    }
+
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+
+      // Header
+      doc.setFillColor(111, 66, 193); // Purple
+      doc.rect(0, 0, pageWidth, 40, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(22);
+      doc.text('Salary Slip', 20, 20);
+      doc.setFontSize(12);
+      doc.text('Unified HRMS', 20, 30);
+
+      // Employee Details
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+      doc.text(`Employee Name: ${user.fullName || user.firstName}`, 20, 55);
+      doc.text(`Employee ID: ${employeeId || 'N/A'}`, 20, 65);
+      doc.text(`Month: ${new Date().toLocaleString('default', { month: 'long', year: 'numeric' })} (Projected)`, 20, 75);
+
+      // Prepare Table Data
+      const baseSalary = salaryStructure.baseSalary || 0;
+      const totalAllowances = calculateTotal(salaryStructure.allowances);
+      const totalDeductions = calculateTotal(salaryStructure.deductions);
+      const netSalary = salaryStructure.projectedNet || 0;
+
+      const allowancesBreakdown = typeof salaryStructure.allowances === 'object'
+        ? Object.entries(salaryStructure.allowances).map(([k, v]) => [`${k.toUpperCase()}`, `₹${v.toLocaleString()}`, '', ''])
+        : [];
+
+      const deductionsBreakdown = typeof salaryStructure.deductions === 'object'
+        ? Object.entries(salaryStructure.deductions).map(([k, v]) => ['', '', `${k.toUpperCase()}`, `₹${v.toLocaleString()}`])
+        : [];
+
+      autoTable(doc, {
+        startY: 90,
+        head: [['Earnings', 'Amount', 'Deductions', 'Amount']],
+        body: [
+          ['Base Salary', `₹${baseSalary.toLocaleString()}`, 'Total Deductions', `₹${totalDeductions.toLocaleString()}`],
+          ['Allowances', `₹${totalAllowances.toLocaleString()}`, '', ''],
+          ...allowancesBreakdown,
+          ...deductionsBreakdown,
+          ['', '', '', ''],
+          ['Gross Earnings', `₹${(baseSalary + totalAllowances).toLocaleString()}`, 'Net Payable', `₹${netSalary.toLocaleString()}`]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [111, 66, 193] },
+        styles: { fontSize: 10, cellPadding: 5 }
+      });
+
+      // Footer
+      const finalY = doc.lastAutoTable.finalY + 20;
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text('* This is a computer-generated slip based on projected attendance availability.', 20, finalY);
+
+      const fileName = `Salary_Slip_${employeeId}_${new Date().getMonth() + 1}_${new Date().getFullYear()}.pdf`;
+      doc.save(fileName);
+      console.log("PDF saved as:", fileName);
+
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Check console for details.");
+    }
+  };
+
   const PayrollSection = () => (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-      <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{language === 'en' ? 'Payroll History' : 'वेतन इतिहास'}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{language === 'en' ? 'My Payroll' : 'मेरा वेतन'}</h2>
+        <button
+          onClick={downloadSalarySlip}
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+        >
+          <Download size={16} />
+          {language === 'en' ? 'Download Slip' : 'पर्ची डाउनलोड करें'}
+        </button>
+      </div>
+
+      {/* Expected Payroll Card */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg col-span-1 md:col-span-2 lg:col-span-1">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-indigo-100 mb-1 font-medium">{language === 'en' ? 'Expected Salary (Current Month)' : 'अपेक्षित वेतन (वर्तमान माह)'}</p>
+              <h3 className="text-3xl font-bold mt-2">
+                ₹{salaryStructure ? salaryStructure.projectedNet?.toLocaleString() : '...'}
+              </h3>
+            </div>
+            <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+              <Banknote size={24} />
+            </div>
+          </div>
+          <p className="text-xs text-indigo-100 mt-4 opacity-90">
+            {language === 'en'
+              ? 'Calculated based on your attendance and base salary.'
+              : 'आपकी उपस्थिति और मूल वेतन के आधार पर गणना की गई।'}
+          </p>
+        </div>
+
+        {/* Breakdown Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 col-span-1 md:col-span-2 lg:col-span-2">
+          <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-4">{language === 'en' ? 'Salary Breakdown' : 'वेतन विवरण'}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{language === 'en' ? 'Base Salary' : 'मूल वेतन'}</p>
+              <p className="font-semibold text-gray-900 dark:text-white">₹{salaryStructure ? salaryStructure.baseSalary?.toLocaleString() : '...'}</p>
+            </div>
+            <div className="p-3 bg-green-50 dark:bg-green-900/10 rounded-xl">
+              <p className="text-xs text-green-600 dark:text-green-400 mb-1">{language === 'en' ? 'Allowances' : 'भत्ते'}</p>
+              <p className="font-semibold text-green-700 dark:text-green-300">
+                + ₹{salaryStructure ? calculateTotal(salaryStructure.allowances).toLocaleString() : '0'}
+              </p>
+            </div>
+            <div className="p-3 bg-red-50 dark:bg-red-900/10 rounded-xl">
+              <p className="text-xs text-red-600 dark:text-red-400 mb-1">{language === 'en' ? 'Deductions (Est.)' : 'कटौती (अनुमानित)'}</p>
+              <p className="font-semibold text-red-700 dark:text-red-300">
+                - ₹{salaryStructure ? calculateTotal(salaryStructure.deductions).toLocaleString() : '0'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mt-8">{language === 'en' ? 'Payment History' : 'भुगतान इतिहास'}</h3>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-750 border-b border-gray-100 dark:border-gray-700">
@@ -550,7 +718,7 @@ const EmployeeDashboard = () => {
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 className="grayscale hover:grayscale-0 transition-all duration-500"
-              ></iframe>
+              ></iframe >
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <Loader className="animate-spin text-gray-400" size={32} />
@@ -571,43 +739,51 @@ const EmployeeDashboard = () => {
                 <span>{language === 'en' ? 'Getting location...' : 'लोकेशन प्राप्त कर रहे हैं...'}</span>
               )}
             </div>
-          </div>
+          </div >
           {locationError && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <p className="text-sm text-red-700 dark:text-red-400">{locationError}</p>
             </div>
           )}
 
-          {currentLocation && !locationVerified && (
-            <div className="mb-4 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-2">
-              <AlertTriangle size={14} />
-              <span>
-                {language === 'en'
-                  ? 'Tip: Desktop location is often inaccurate. Please use a mobile phone for precise GPS location.'
-                  : 'सुझाव: डेस्कटॉप लोकेशन अक्सर गलत होती है। सटीक जीपीएस लोकेशन के लिए कृपया मोबाइल फोन का उपयोग करें।'}
-              </span>
-            </div>
-          )}
+          {
+            currentLocation && !locationVerified && (
+              <div className="mb-4 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-2">
+                <AlertTriangle size={14} />
+                <span>
+                  {language === 'en'
+                    ? 'Tip: Desktop location is often inaccurate. Please use a mobile phone for precise GPS location.'
+                    : 'सुझाव: डेस्कटॉप लोकेशन अक्सर गलत होती है। सटीक जीपीएस लोकेशन के लिए कृपया मोबाइल फोन का उपयोग करें।'}
+                </span>
+              </div>
+            )
+          }
 
-          {currentLocation && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              {language === 'en' ? 'Coordinates: ' : 'निर्देशांक: '}
-              {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
-            </div>
-          )}
+          {
+            currentLocation && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                {language === 'en' ? 'Coordinates: ' : 'निर्देशांक: '}
+                {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
+              </div>
+            )
+          }
 
-          {userData && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              <span className="font-semibold">{language === 'en' ? 'Assigned Location: ' : 'निर्दिष्ट स्थान: '}</span>
-              {language === 'en' ? 'Zone' : 'जोन'} {userData.Zone || 'N/A'}, {language === 'en' ? 'Ward' : 'वार्ड'} {userData.Ward || 'N/A'}
-            </div>
-          )}
-          {distanceFromWard !== null && (
-            <div className={`text-xs ${distanceFromWard > 25000 ? 'text-red-600 font-bold' : 'text-gray-500 dark:text-gray-400'} mb-4`}>
-              <span className="font-semibold">{language === 'en' ? 'Distance: ' : 'दूरी: '}</span>
-              {distanceFromWard >= 1000 ? `${(distanceFromWard / 1000).toFixed(2)} km` : `${Math.round(distanceFromWard)} m`}
-            </div>
-          )}
+          {
+            userData && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                <span className="font-semibold">{language === 'en' ? 'Assigned Location: ' : 'निर्दिष्ट स्थान: '}</span>
+                {language === 'en' ? 'Zone' : 'जोन'} {userData.Zone || 'N/A'}, {language === 'en' ? 'Ward' : 'वार्ड'} {userData.Ward || 'N/A'}
+              </div>
+            )
+          }
+          {
+            distanceFromWard !== null && (
+              <div className={`text-xs ${distanceFromWard > 25000 ? 'text-red-600 font-bold' : 'text-gray-500 dark:text-gray-400'} mb-4`}>
+                <span className="font-semibold">{language === 'en' ? 'Distance: ' : 'दूरी: '}</span>
+                {distanceFromWard >= 1000 ? `${(distanceFromWard / 1000).toFixed(2)} km` : `${Math.round(distanceFromWard)} m`}
+              </div>
+            )
+          }
           <button
             onClick={getCurrentLocation}
             className="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -615,122 +791,124 @@ const EmployeeDashboard = () => {
             <MapPin size={16} />
             {language === 'en' ? 'Refresh Location' : 'लोकेशन रीफ्रेश करें'}
           </button>
-        </div>
+        </div >
 
         {/* Actions Section */}
-        <div className="space-y-6">
+        < div className="space-y-6" >
           {/* Mark Attendance */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+          < div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700" >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-700 dark:text-gray-200">{language === 'en' ? 'Mark Attendance' : 'उपस्थिति दर्ज करें'}</h3>
               <Clock className="text-blue-500" size={20} />
             </div>
-            {todayAttendance?.checkInTime ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="text-green-500" size={20} />
-                    <span className="font-semibold text-green-700 dark:text-green-400">
-                      {language === 'en' ? 'Checked In' : 'चेक इन किया गया'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-green-600 dark:text-green-400">
-                    {language === 'en' ? 'Check-in Time: ' : 'चेक-इन समय: '}
-                    {new Date(todayAttendance.checkInTime).toLocaleTimeString()}
-                  </p>
-                  {todayAttendance.checkOutTime ? (
-                    <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-                      {language === 'en' ? 'Check-out Time: ' : 'चेक-आउट समय: '}
-                      {new Date(todayAttendance.checkOutTime).toLocaleTimeString()}
+            {
+              todayAttendance?.checkInTime ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="text-green-500" size={20} />
+                      <span className="font-semibold text-green-700 dark:text-green-400">
+                        {language === 'en' ? 'Checked In' : 'चेक इन किया गया'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-green-600 dark:text-green-400">
+                      {language === 'en' ? 'Check-in Time: ' : 'चेक-इन समय: '}
+                      {new Date(todayAttendance.checkInTime).toLocaleTimeString()}
                     </p>
-                  ) : (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/attendance/checkout`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ employeeId })
-                          });
-                          const data = await response.json();
-                          if (data.success) {
-                            alert(language === 'en' ? 'Check-out successful!' : 'चेक-आउट सफल!');
-                            fetchTodayAttendance();
+                    {todayAttendance.checkOutTime ? (
+                      <p className="text-sm text-green-600 dark:text-green-400 mt-2">
+                        {language === 'en' ? 'Check-out Time: ' : 'चेक-आउट समय: '}
+                        {new Date(todayAttendance.checkOutTime).toLocaleTimeString()}
+                      </p>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/attendance/checkout`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ employeeId })
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                              alert(language === 'en' ? 'Check-out successful!' : 'चेक-आउट सफल!');
+                              fetchTodayAttendance();
+                            }
+                          } catch (error) {
+                            console.error('Error checking out:', error);
                           }
-                        } catch (error) {
-                          console.error('Error checking out:', error);
-                        }
-                      }}
-                      className="mt-3 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 rounded-lg transition-colors"
-                    >
-                      {language === 'en' ? 'Check Out' : 'चेक आउट करें'}
-                    </button>
-                  )}
+                        }}
+                        className="mt-3 w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 rounded-lg transition-colors"
+                      >
+                        {language === 'en' ? 'Check Out' : 'चेक आउट करें'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                {/* Time Window Info */}
-                <div className={`mb-4 p-3 rounded-lg border ${isWithinCheckInTime
-                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                  : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                  }`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className={isWithinCheckInTime ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'} size={16} />
-                    <span className={`text-sm font-semibold ${isWithinCheckInTime
-                      ? 'text-green-700 dark:text-green-400'
+              ) : (
+                <>
+                  {/* Time Window Info */}
+                  <div className={`mb-4 p-3 rounded-lg border ${isWithinCheckInTime
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                    : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                    }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className={isWithinCheckInTime ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'} size={16} />
+                      <span className={`text-sm font-semibold ${isWithinCheckInTime
+                        ? 'text-green-700 dark:text-green-400'
+                        : 'text-yellow-700 dark:text-yellow-400'
+                        }`}>
+                        {language === 'en' ? 'Check-in Time Window' : 'चेक-इन समय विंडो'}
+                      </span>
+                    </div>
+                    <p className={`text-xs ${isWithinCheckInTime
+                      ? 'text-green-600 dark:text-green-400'
                       : 'text-yellow-700 dark:text-yellow-400'
                       }`}>
-                      {language === 'en' ? 'Check-in Time Window' : 'चेक-इन समय विंडो'}
-                    </span>
+                      {isWithinCheckInTime
+                        ? (language === 'en'
+                          ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - You can check in now!`
+                          : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - आप अभी चेक इन कर सकते हैं!`)
+                        : (language === 'en'
+                          ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - Check-in allowed only between 9:00 AM - 11:00 AM`
+                          : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - चेक-इन केवल सुबह 9:00 बजे से 11:00 बजे के बीच अनुमत है`)}
+                    </p>
                   </div>
-                  <p className={`text-xs ${isWithinCheckInTime
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-yellow-700 dark:text-yellow-400'
-                    }`}>
-                    {isWithinCheckInTime
-                      ? (language === 'en'
-                        ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - You can check in now!`
-                        : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - आप अभी चेक इन कर सकते हैं!`)
-                      : (language === 'en'
-                        ? `Current time: ${currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - Check-in allowed only between 9:00 AM - 11:00 AM`
-                        : `वर्तमान समय: ${currentTime.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit', hour12: true })} - चेक-इन केवल सुबह 9:00 बजे से 11:00 बजे के बीच अनुमत है`)}
-                  </p>
-                </div>
 
-                <p className={`text-sm mb-6 ${locationVerified && isWithinCheckInTime ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                  {locationVerified && isWithinCheckInTime
-                    ? (language === 'en' ? 'Your location is verified. You can now mark your attendance.' : 'आपकी लोकेशन सत्यापित है। अब आप अपनी उपस्थिति दर्ज कर सकते हैं।')
-                    : !isWithinCheckInTime
-                      ? (language === 'en' ? 'Please wait for the check-in time window (9:00 AM - 11:00 AM).' : 'कृपया चेक-इन समय विंडो (सुबह 9:00 बजे - 11:00 बजे) का इंतजार करें।')
-                      : (language === 'en' ? 'Please allow location access and verify you are in your assigned ward.' : 'कृपया लोकेशन एक्सेस की अनुमति दें और सत्यापित करें कि आप अपने निर्दिष्ट वार्ड में हैं।')}
-                </p>
-                <button
-                  onClick={handleCheckIn}
-                  disabled={!locationVerified || isCheckingIn || !currentLocation || !isWithinCheckInTime}
-                  className={`w-full font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2 ${locationVerified && !isCheckingIn && currentLocation && isWithinCheckInTime
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/30'
-                    : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                    }`}
-                >
-                  {isCheckingIn ? (
-                    <>
-                      <Loader className="animate-spin" size={20} />
-                      {language === 'en' ? 'Checking In...' : 'चेक इन हो रहा है...'}
-                    </>
-                  ) : (
-                    <>
-                      <MapPin size={20} />
-                      {language === 'en' ? 'Check In Now' : 'चेक इन करें'}
-                    </>
-                  )}
-                </button>
-              </>
-            )}
-          </div>
+                  <p className={`text-sm mb-6 ${locationVerified && isWithinCheckInTime ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {locationVerified && isWithinCheckInTime
+                      ? (language === 'en' ? 'Your location is verified. You can now mark your attendance.' : 'आपकी लोकेशन सत्यापित है। अब आप अपनी उपस्थिति दर्ज कर सकते हैं।')
+                      : !isWithinCheckInTime
+                        ? (language === 'en' ? 'Please wait for the check-in time window (9:00 AM - 11:00 AM).' : 'कृपया चेक-इन समय विंडो (सुबह 9:00 बजे - 11:00 बजे) का इंतजार करें।')
+                        : (language === 'en' ? 'Please allow location access and verify you are in your assigned ward.' : 'कृपया लोकेशन एक्सेस की अनुमति दें और सत्यापित करें कि आप अपने निर्दिष्ट वार्ड में हैं।')}
+                  </p>
+                  <button
+                    onClick={handleCheckIn}
+                    disabled={!locationVerified || isCheckingIn || !currentLocation || !isWithinCheckInTime}
+                    className={`w-full font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2 ${locationVerified && !isCheckingIn && currentLocation && isWithinCheckInTime
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-blue-500/30'
+                      : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                      }`}
+                  >
+                    {isCheckingIn ? (
+                      <>
+                        <Loader className="animate-spin" size={20} />
+                        {language === 'en' ? 'Checking In...' : 'चेक इन हो रहा है...'}
+                      </>
+                    ) : (
+                      <>
+                        <MapPin size={20} />
+                        {language === 'en' ? 'Check In Now' : 'चेक इन करें'}
+                      </>
+                    )}
+                  </button>
+                </>
+              )
+            }
+          </div >
 
           {/* Leave Request */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+          < div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700" >
             <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-4">{language === 'en' ? 'Request Leave' : 'छुट्टी का अनुरोध'}</h3>
             <form className="space-y-4">
               <div>
@@ -745,12 +923,12 @@ const EmployeeDashboard = () => {
                 {language === 'en' ? 'Submit Request' : 'अनुरोध भेजें'}
               </button>
             </form>
-          </div>
-        </div>
-      </div>
+          </div >
+        </div >
+      </div >
 
       {/* Attendance Calendar - Full Width Below Top Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+      < div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700" >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <h3 className="font-semibold text-gray-700 dark:text-gray-200">
@@ -847,12 +1025,13 @@ const EmployeeDashboard = () => {
             );
           })}
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('General');
   const [recentIssues, setRecentIssues] = useState([]);
   const [selectedIssue, setSelectedIssue] = useState(null);
 
@@ -915,7 +1094,8 @@ const EmployeeDashboard = () => {
         body: JSON.stringify({
           employeeId: user.employeeId,
           title: subject,
-          description: description
+          description: description,
+          category: category
         })
       });
 
@@ -925,6 +1105,7 @@ const EmployeeDashboard = () => {
         alert(language === 'en' ? "Issue reported successfully!" : "समस्या सफलतापूर्वक रिपोर्ट की गई!");
         setSubject('');
         setDescription('');
+        setCategory('General');
       } else {
         alert(result.message || "Failed to report issue.");
       }
@@ -949,6 +1130,17 @@ const EmployeeDashboard = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{language === 'en' ? 'Description' : 'विवरण'}</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="4" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 outline-none transition-all resize-none" placeholder={language === 'en' ? 'Detailed description...' : 'विस्तृत विवरण...'}></textarea>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{language === 'en' ? 'Category' : 'श्रेणी'}</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 outline-none transition-all cursor-pointer">
+                  <option value="General">{language === 'en' ? 'General' : 'सामान्य'}</option>
+                  <option value="Vector Control">{language === 'en' ? 'Vector Control (Mosquitoes/Pests)' : 'वेक्टर नियंत्रण (मच्छर/कीट)'}</option>
+                  <option value="Drainage">{language === 'en' ? 'Drainage' : 'जल निकासी'}</option>
+                  <option value="Garbage">{language === 'en' ? 'Garbage Collection' : 'कचरा संग्रहण'}</option>
+                </select>
+              </div>
+
               <button onClick={handleSubmitIssue} className="w-full cursor-pointer bg-[#6F42C1] hover:bg-[#5a32a3] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all">
                 <Send size={18} />
                 {language === 'en' ? 'Submit Report' : 'रिपोर्ट भेजें'}
@@ -1042,12 +1234,38 @@ const EmployeeDashboard = () => {
     );
   };
 
+  // Fetch attendance analytics for performance chart
+  const fetchPerformanceAnalytics = async () => {
+    if (!employeeId) return;
+
+    setIsLoadingPerformance(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URI}/attendance/analytics/${employeeId}?weeks=4`
+      );
+      const data = await response.json();
+      if (data.success && data.analytics) {
+        // Transform analytics data for chart
+        const chartData = data.analytics.map((week, index) => ({
+          name: language === 'en' ? `Week ${week.weekNumber}` : `सप्ताह ${week.weekNumber}`,
+          tasks: week.presentDays, // Using presentDays for left graph
+          quality: week.weekCredit || 0 // Using credit for right graph
+        }));
+        setPerformanceData(chartData);
+      }
+    } catch (error) {
+      console.error('Error fetching attendance analytics:', error);
+    } finally {
+      setIsLoadingPerformance(false);
+    }
+  };
+
   const PerformanceSection = () => (
     <div className="space-y-6 animate-in fade-in zoom-in duration-300">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{language === 'en' ? 'My Performance' : 'मेरा प्रदर्शन'}</h2>
         <button
-          onClick={fetchAttendanceAnalytics}
+          onClick={fetchPerformanceAnalytics}
           disabled={isLoadingPerformance}
           className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors flex items-center gap-2 text-sm"
         >
@@ -1066,12 +1284,13 @@ const EmployeeDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Graph: Attendance (Days Present) */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h3 className="font-semibold mb-2">{language === 'en' ? 'Task Completion (Based on Attendance)' : 'कार्य पूर्णता (उपस्थिति के आधार पर)'}</h3>
+          <h3 className="font-semibold mb-2">{language === 'en' ? 'Attendance (Days Present)' : 'उपस्थिति (दिन उपस्थित)'}</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">
             {language === 'en'
-              ? 'Tasks completed based on attendance days per week'
-              : 'साप्ताहिक उपस्थिति के आधार पर पूर्ण किए गए कार्य'}
+              ? 'Number of days present per week'
+              : 'प्रति सप्ताह उपस्थित दिनों की संख्या'}
           </p>
           <div className="h-64">
             {isLoadingPerformance ? (
@@ -1086,28 +1305,29 @@ const EmployeeDashboard = () => {
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    domain={[0, 'dataMax']}
+                    domain={[0, 7]}
                     ticks={[0, 1, 3, 5, 7]}
                     allowDecimals={false}
                   />
                   <Tooltip
                     cursor={{ fill: 'transparent' }}
                     contentStyle={{ borderRadius: '8px' }}
-                    formatter={(value) => [value, language === 'en' ? 'Tasks' : 'कार्य']}
+                    formatter={(value) => [value, language === 'en' ? 'Days' : 'दिन']}
                   />
-                  <Bar dataKey="tasks" fill="#6F42C1" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="tasks" fill="#6F42C1" radius={[6, 6, 0, 0]} barSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
 
+        {/* Right Graph: Credit Score */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h3 className="font-semibold mb-2">{language === 'en' ? 'Attendance Percentage Trend' : 'उपस्थिति प्रतिशत रुझान'}</h3>
+          <h3 className="font-semibold mb-2">{language === 'en' ? 'Credit Score' : 'क्रेडिट स्कोर'}</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">
             {language === 'en'
-              ? 'Weekly attendance percentage over time'
-              : 'समय के साथ साप्ताहिक उपस्थिति प्रतिशत'}
+              ? 'Weekly performance credit score'
+              : 'साप्ताहिक प्रदर्शन क्रेडिट स्कोर'}
           </p>
           <div className="h-64">
             {isLoadingPerformance ? (
@@ -1116,22 +1336,17 @@ const EmployeeDashboard = () => {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={performanceData}>
-                  <defs>
-                    <linearGradient id="colorQuality2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                <BarChart data={performanceData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                  <YAxis axisLine={false} tickLine={false} domain={[0, 100]} />
+                  <YAxis axisLine={false} tickLine={false} domain={[0, 10]} ticks={[0, 2, 4, 6, 8, 10]} />
                   <Tooltip
                     contentStyle={{ borderRadius: '8px' }}
-                    formatter={(value) => [`${value}%`, language === 'en' ? 'Attendance' : 'उपस्थिति']}
+                    formatter={(value) => [value, language === 'en' ? 'Credits' : 'क्रेडिट']}
+                    cursor={{ fill: 'transparent' }}
                   />
-                  <Area type="monotone" dataKey="quality" stroke="#ec4899" fillOpacity={1} fill="url(#colorQuality2)" />
-                </AreaChart>
+                  <Bar dataKey="quality" fill="#10B981" radius={[6, 6, 0, 0]} barSize={40} />
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>
