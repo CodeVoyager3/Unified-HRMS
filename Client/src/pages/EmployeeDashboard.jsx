@@ -1500,66 +1500,112 @@ const EmployeeDashboard = () => {
 
   const sidebarItems = [
     { id: 'overview', label: language === 'en' ? 'Overview' : 'अवलोकन', icon: LayoutDashboard },
-    { id: 'payroll', label: language === 'en' ? 'My Payroll' : 'मेरा वेतन', icon: Banknote },
     { id: 'attendance', label: language === 'en' ? 'Attendance' : 'उपस्थिति', icon: MapPin },
+    { id: 'tasks', label: language === 'en' ? 'My Tasks' : 'मेरे कार्य', icon: ClipboardList },
+    { id: 'payroll', label: language === 'en' ? 'My Payroll' : 'मेरा वेतन', icon: Banknote },
     { id: 'performance', label: language === 'en' ? 'Performance' : 'प्रदर्शन', icon: BarChart3 },
     { id: 'issues', label: language === 'en' ? 'Issues' : 'समस्याएं', icon: AlertCircle },
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950 transition-colors duration-300 overflow-hidden">
-      <Navbar onSidebarToggle={toggleSidebar} />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300 font-inter">
+      <Navbar onSidebarToggle={toggleSidebar} alwaysShowToggle={true} />
 
-      <div className="flex-1 flex overflow-hidden relative">
-
+      <div className="flex">
         {/* Sidebar */}
         <aside className={`
-                    absolute lg:static top-0 left-0 h-full
-                    w-64 bg-[#1e1b4b] text-gray-300 transition-transform duration-300 z-40 shrink-0 overflow-hidden
-                    ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-                `}>
-          <div className="p-4 space-y-2 mt-4">
-            <div className="mb-8 px-4">
-              <p className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-2">{language === 'en' ? 'Main Menu' : 'मुख्य मेनू'}</p>
+          bg-white dark:bg-[#0f0d24] h-[calc(100vh-104px)] 
+          fixed lg:sticky top-[104px] left-0 z-40 overflow-y-auto custom-scrollbar
+          border-r border-gray-200 dark:border-white/5
+          transition-[width,transform] duration-300 ease-in-out
+          ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-64 -translate-x-full lg:translate-x-0 lg:w-20'}
+        `}>
+          <div className="p-4 flex flex-col h-full">
+            {/* Identity */}
+            <div className={`flex items-center gap-3 mb-6 ${isSidebarOpen ? 'px-2' : 'justify-center px-0'}`}>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/20">
+                <LayoutDashboard className="text-white" size={22} />
+              </div>
+              <div className={`transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100 block' : 'opacity-0 hidden w-0'}`}>
+                <h2 className="text-gray-900 dark:text-white font-bold text-lg leading-tight whitespace-nowrap">Employee Panel</h2>
+                <p className="text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{language === 'en' ? 'Dashboard' : 'डैशबोर्ड'}</p>
+              </div>
             </div>
-            {sidebarItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  if (window.innerWidth < 1024) setIsSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${activeTab === item.id
-                  ? 'bg-[#6F42C1] text-white shadow-lg shadow-purple-500/20'
-                  : 'hover:bg-white/5 hover:text-white'
-                  }`}
-              >
-                <item.icon size={20} />
-                {item.label}
-              </button>
-            ))}
-          </div>
 
-          <div className="absolute bottom-8 left-0 w-full px-4">
-            <button
-              onClick={() => signOut()}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-all"
-            >
-              <LogOut size={20} />
-              {language === 'en' ? 'Sign Out' : 'साइन आउट'}
-            </button>
+            {/* Workspace Info - Hide in Mini Mode */}
+            {isSidebarOpen && (
+              <div className="mb-6 px-2 animate-in fade-in duration-300">
+                <div className="bg-gray-50 dark:bg-[#2d2a5e]/50 border border-gray-200 dark:border-white/5 rounded-xl p-3 backdrop-blur-sm">
+                  <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase tracking-widest font-bold mb-1">
+                    {language === 'en' ? 'Assigned Location' : 'निर्दिष्ट स्थान'}
+                  </p>
+                  <p className="text-gray-900 dark:text-white font-semibold text-sm flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    {userData?.Ward
+                      ? (language === 'en' ? `Ward ${userData.Ward} - ${userData.Zone || 'General'} ` : `वार्ड ${userData.Ward} - ${userData.Zone || 'सामान्य'} `)
+                      : (language === 'en' ? 'Loading...' : 'लोड हो रहा है...')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation */}
+            <nav className="space-y-1 flex-1">
+              {sidebarItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                  }}
+                  title={!isSidebarOpen ? item.label : ''}
+                  className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3' : 'justify-center px-0'} py-3 rounded-xl transition-all duration-300 group ${activeTab === item.id
+                    ? 'bg-gradient-to-r from-[#6F42C1] to-[#5a35a0] text-white shadow-lg shadow-purple-500/25'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                >
+                  <item.icon size={20} className={`flex-shrink-0 transition-transform duration-300 ${activeTab === item.id ? 'scale-110' : 'group-hover:scale-110'}`} />
+                  <span className={`text-sm font-medium transition-all duration-200 ${isSidebarOpen ? 'opacity-100 block' : 'opacity-0 hidden w-0'}`}>
+                    {item.label}
+                  </span>
+                  {activeTab === item.id && isSidebarOpen && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+                  )}
+                </button>
+              ))}
+            </nav>
+
+            <div className={`mt-auto pt-4 border-t border-gray-200 dark:border-white/10 ${isSidebarOpen ? '' : 'flex justify-center'}`}>
+              <button
+                onClick={() => signOut()}
+                title={!isSidebarOpen ? (language === 'en' ? 'Sign Out' : 'साइन आउट') : ''}
+                className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3' : 'justify-center px-0'} py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200`}
+              >
+                <LogOut size={20} className="flex-shrink-0" />
+                <span className={`text-sm font-medium transition-all duration-200 ${isSidebarOpen ? 'opacity-100 block' : 'opacity-0 hidden w-0'}`}>
+                  {language === 'en' ? 'Sign Out' : 'साइन आउट'}
+                </span>
+              </button>
+            </div>
           </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 h-full overflow-y-auto p-4 lg:p-8 w-full max-w-7xl mx-auto">
-          <div className="mt-12 lg:mt-0">
+        {/* Main Content Area */}
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
+          {/* Mobile Sidebar Overlay */}
+          {/* Note: The original generic sidebar often uses an overlay for mobile. 
+               The inspector dashboard didn't plainly show it in the snippet, 
+               but usually 'fixed' sidebar covers content. 
+               We simply let the 'fixed' sidebar slide in over content on mobile. */}
+
+          <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 mt-16 lg:mt-0">
+            {/* Content */}
             {renderContent()}
           </div>
         </main>
       </div>
     </div>
   );
-}
+};
 
 export default EmployeeDashboard;
