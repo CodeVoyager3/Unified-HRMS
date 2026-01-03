@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { ShieldAlert, UserX, UserCheck, Search, Filter, AlertTriangle } from 'lucide-react';
 
-const DisciplinaryAction = ({ language = 'en' }) => {
+const DisciplinaryAction = ({ language = 'en', userZone }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState('All');
 
-    const employees = [
-        { id: 'MCD101', name: 'Rajesh Kumar', ward: 'ROHINI-A', performance: 45, status: 'Active', lateDays: 12 },
-        { id: 'MCD105', name: 'Sunita Sharma', ward: 'ROHINI-B', performance: 38, status: 'Active', lateDays: 15 },
-        { id: 'MCD120', name: 'Amit Singh', ward: 'RITHALA', performance: 52, status: 'Under Review', lateDays: 8 },
-        { id: 'MCD142', name: 'Priya Devi', ward: 'VIJAY VIHAR', performance: 30, status: 'Active', lateDays: 20 },
+    // Mock data - In real app, fetch from backend using userZone
+    const allEmployees = [
+        { id: 'MCD101', name: 'Rajesh Kumar', ward: 'ROHINI-A', zone: 'Rohini Zone', performance: 45, status: 'Active', lateDays: 12 },
+        { id: 'MCD105', name: 'Sunita Sharma', ward: 'ROHINI-B', zone: 'Rohini Zone', performance: 38, status: 'Active', lateDays: 15 },
+        { id: 'MCD120', name: 'Amit Singh', ward: 'RITHALA', zone: 'Rohini Zone', performance: 52, status: 'Under Review', lateDays: 8 },
+        { id: 'MCD142', name: 'Priya Devi', ward: 'VIJAY VIHAR', zone: 'Rohini Zone', performance: 30, status: 'Active', lateDays: 20 },
+        { id: 'MCD201', name: 'Vikram Malhotra', ward: 'KAROL BAGH-A', zone: 'Karol Bagh Zone', performance: 40, status: 'Active', lateDays: 10 },
     ];
+
+    const employees = allEmployees.filter(emp => emp.zone === userZone);
 
     const filteredEmployees = employees.filter(emp =>
         emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -168,3 +168,133 @@ exports.checkApplicationByEmail = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
+const User = require('../models/User');
+
+// ... existing code ...
+
+// ... existing code ...
+
+exports.rejectCandidate = async (req, res) => {
+    try {
+        const { candidateId, reason } = req.body;
+        console.log("Rejecting candidate:", candidateId, "Reason:", reason);
+
+        const candidate = await Candidate.findById(candidateId);
+        if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
+
+        candidate.verificationStatus = 'Rejected';
+        candidate.rejectionReason = reason || 'No reason provided';
+        await candidate.save();
+
+        res.status(200).json({ success: true, message: "Candidate Rejected" });
+    } catch (error) {
+        console.error("Reject Candidate Error:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+exports.getZoneCandidates = async (req, res) => {
+    try {
+        const { zone } = req.params;
+        // Fetch candidates who have passed the exam (can filter by examId if needed) or just have status 'Submitted'
+        // Ideally, we should have a Zone preference in Candidate model or map Exam -> Zone. 
+        // For now, assuming DC sees ALL submitted candidates to assign them manually or auto-assign to their zone.
+        // Or better: We fetch all 'Submitted' candidates.
+
+        const candidates = await Candidate.find({ verificationStatus: 'Submitted' }).sort({ createdAt: -1 });
+        res.status(200).json({ success: true, candidates });
+    } catch (error) {
+        console.error("Fetch Zone Candidates Error:", error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
+};
+
+exports.approveCandidate = async (req, res) => {
+    try {
+        const { candidateId, zone } = req.body;
+
+        const candidate = await Candidate.findById(candidateId);
+        if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
+
+        if (candidate.verificationStatus === 'Approved') {
+            return res.status(400).json({ success: false, message: "Candidate already approved" });
+        }
+
+        // 1. Load Balancing: Find Ward with minimum employees in the given Zone
+        // Hack: We look for users in Wards 1 to 100 (example) filtering by Zone if User schema had Zone properly populated.
+        // Since Ward is Number, let's assume Wards 1-10 belong to Rohini Zone, etc.
+        // For dynamic load balancing, we query existing Users.
+
+        // Find all users in this zone matching the role 'Worker' (or generic staff)
+        const existingStaff = await User.find({ Zone: zone, role: 'Worker' });
+
+        // Group by Ward
+        const wardCounts = {};
+        // Initialize some wards for the zone (e.g., 1-5) to ensure they exist in map
+        // In a real app, we'd fetch Wards from a Zone model.
+        // Fallback: If no staff exists, assign to Ward 1.
+
+        existingStaff.forEach(u => {
+            wardCounts[u.Ward] = (wardCounts[u.Ward] || 0) + 1;
+        });
+
+        // Find key with minimum value. 
+        // If map is empty, default to Ward 1.
+        let targetWard = 1;
+        if (existingStaff.length > 0) {
+            // Simple logic: pick ward with min count from observed wards
+            // This assumes we only balance between wards that already have at least one employee or just pick one.
+            // Let's improve: Pick from a predefined set of Wards for the Zone (Simulated)
+            const zoneWards = [1, 2, 3, 4, 5]; // Simulating Rohini Zone Wards
+
+            let minCount = Infinity;
+            zoneWards.forEach(w => {
+                const count = wardCounts[w] || 0;
+                if (count < minCount) {
+                    minCount = count;
+                    targetWard = w;
+                }
+            });
+        }
+
+        // 2. Generate Employee ID
+        const currentYear = new Date().getFullYear();
+        const randSuffix = Math.floor(1000 + Math.random() * 9000); // 4 digit random
+        const employeeId = `MCD-${currentYear}-${randSuffix}`;
+
+        // 3. Create User Account
+        const newUser = new User({
+            name: candidate.fullName,
+            employeeId: employeeId,
+            email: candidate.email,
+            role: 'Worker', // Defaulting to Worker for now
+            department: 'Sanitation', // Default
+            Zone: zone,
+            Ward: targetWard,
+            employmentStatus: 'Permanent'
+        });
+
+        await newUser.save();
+
+        // 4. Update Candidate Status
+        candidate.verificationStatus = 'Approved';
+        candidate.aiVerificationData.isVerified = true; // Mark as verified
+        // We might want to store the generated ID on the candidate to show them later
+        // Using 'reportCard' field temporarily or adding a new field 'generatedEmployeeId' in schema would be better.
+        // But schema update might be needed. For now, let's send it back in response.
+
+        await candidate.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Candidate Approved & Hired",
+            employeeId: employeeId,
+            assignedWard: targetWard,
+            user: newUser
+        });
+
+    } catch (error) {
+        console.error("Approve Candidate Error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

@@ -14,6 +14,7 @@ const candidateSchema = new mongoose.Schema({
         enum: ['Unverified', 'Verified', 'Submitted', 'Approved', 'Rejected'],
         default: 'Unverified'
     },
+    rejectionReason: { type: String }, // New field for feedback
 
     // Uploaded Documents
     reportCard: { type: String }, // Path/Link to uploaded report card

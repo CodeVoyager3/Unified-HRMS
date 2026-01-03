@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { ArrowRightLeft, MapPin, Search, CheckCircle, XCircle, Clock } from 'lucide-react';
 
-const InterZoneTransfers = ({ language = 'en' }) => {
+const InterZoneTransfers = ({ language = 'en', userZone }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
-    const transfers = [
-        { id: 'TR-401', employee: 'Suresh Raina', from: 'ROHINI-A', to: 'ROHINI-C', reason: 'Operational Requirement', status: 'Pending', date: '2026-01-10' },
-        { id: 'TR-402', employee: 'Meena kumari', from: 'ROHINI-B', to: 'RITHALA', reason: 'Medical Grounds', status: 'Approved', date: '2026-01-05' },
-        { id: 'TR-405', employee: 'Karan Mehra', from: 'VIJAY VIHAR', to: 'ROHINI-A', reason: 'Self Request', status: 'Denied', date: '2026-01-02' },
-        { id: 'TR-410', employee: 'Vikas Gupta', from: 'BUDH VIHAR', to: 'ROHINI-F', reason: 'Administrative', status: 'Pending', date: '2026-01-12' },
+    // Mock data
+    const allTransfers = [
+        { id: 'TR-401', employee: 'Suresh Raina', from: 'ROHINI-A', fromZone: 'Rohini Zone', to: 'ROHINI-C', toZone: 'Rohini Zone', reason: 'Operational Requirement', status: 'Pending', date: '2026-01-10' },
+        { id: 'TR-402', employee: 'Meena kumari', from: 'ROHINI-B', fromZone: 'Rohini Zone', to: 'RITHALA', toZone: 'Rohini Zone', reason: 'Medical Grounds', status: 'Approved', date: '2026-01-05' },
+        { id: 'TR-405', employee: 'Karan Mehra', from: 'VIJAY VIHAR', fromZone: 'Rohini Zone', to: 'ROHINI-A', toZone: 'Rohini Zone', reason: 'Self Request', status: 'Denied', date: '2026-01-02' },
+        { id: 'TR-410', employee: 'Vikas Gupta', from: 'BUDH VIHAR', fromZone: 'Rohini Zone', to: 'CIVIL LINES-A', toZone: 'Civil Lines Zone', reason: 'Administrative', status: 'Pending', date: '2026-01-12' },
+        { id: 'TR-500', employee: 'Rahul Dravid', from: 'KAROL BAGH-A', fromZone: 'Karol Bagh Zone', to: 'ROHINI-A', toZone: 'Rohini Zone', reason: 'Request', status: 'Pending', date: '2026-01-15' },
     ];
+
+    const transfers = allTransfers.filter(tr => tr.fromZone === userZone || tr.toZone === userZone);
 
     const getStatusColor = (status) => {
         switch (status) {
