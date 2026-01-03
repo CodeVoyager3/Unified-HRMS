@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -19,13 +20,16 @@ const DeputyCommissionerDashboard = () => {
   const [activeMenu, setActiveMenu] = useState('Overview');
   const { signOut } = useClerk();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const navigate = useNavigate();
 
-  // Get DC's assigned zone from localStorage (simulated from verification)
+  // Get DC's assigned zone from sessionStorage (simulated from verification)
   const [dcZone, setDcZone] = useState('Rohini Zone');
 
   useEffect(() => {
-    const storedData = localStorage.getItem('verifiedUser');
-    if (storedData) {
+    const storedData = sessionStorage.getItem('verifiedUser');
+    if (!storedData) {
+      navigate('/verify-employee');
+    } else {
       const userData = JSON.parse(storedData);
       if (userData.Zone) {
         // Normalize zone name to match our database (e.g., "Rohini" -> "Rohini Zone")
@@ -33,7 +37,7 @@ const DeputyCommissionerDashboard = () => {
         setDcZone(normalizedZone);
       }
     }
-  }, []);
+  }, [navigate]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 

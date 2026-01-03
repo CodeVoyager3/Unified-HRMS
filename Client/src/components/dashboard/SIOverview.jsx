@@ -51,12 +51,16 @@ const SIOverview = ({ language, setActiveMenu, currentUser }) => {
                     currentWard = currentUser.Ward;
                     setWardNumber(currentUser.Ward);
                 } else {
-                    const storedData = localStorage.getItem('verifiedUser');
+                    const storedData = sessionStorage.getItem('verifiedUser');
                     if (storedData) {
-                        const userData = JSON.parse(storedData);
-                        if (userData.Ward) {
-                            currentWard = userData.Ward;
-                            setWardNumber(userData.Ward);
+                        try {
+                            const userData = JSON.parse(storedData);
+                            if (userData.Ward) {
+                                currentWard = userData.Ward;
+                                setWardNumber(userData.Ward);
+                            }
+                        } catch (e) {
+                            console.error("Error parsing session data", e);
                         }
                     }
                 }

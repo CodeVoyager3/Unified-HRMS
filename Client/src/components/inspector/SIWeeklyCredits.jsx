@@ -37,7 +37,7 @@ const SIWeeklyCredits = ({ language = 'en', currentUser }) => {
                     setWardNumber(currentWard);
                     setAssignedBy(currentUser.employeeId);
                 } else {
-                    const storedData = localStorage.getItem('verifiedUser');
+                    const storedData = sessionStorage.getItem('verifiedUser');
                     if (storedData) {
                         try {
                             const userData = JSON.parse(storedData);
@@ -122,9 +122,9 @@ const SIWeeklyCredits = ({ language = 'en', currentUser }) => {
     const refreshEmployees = async () => {
         setIsLoading(true);
         try {
-            // Get ward from localStorage or use current state
+            // Get ward from sessionStorage or use current state
             let currentWard = wardNumber;
-            const storedData = localStorage.getItem('verifiedUser');
+            const storedData = sessionStorage.getItem('verifiedUser');
             if (storedData) {
                 try {
                     const userData = JSON.parse(storedData);
@@ -410,8 +410,8 @@ const SIWeeklyCredits = ({ language = 'en', currentUser }) => {
                                             <div className="flex gap-1">
                                                 {[1, 2, 3, 4].map(w => (
                                                     <div key={w} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${w === activeWeek ? 'bg-amber-500 text-white' :
-                                                            credits[`week${w}`] > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
-                                                                'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                                                        credits[`week${w}`] > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                                                            'bg-gray-100 dark:bg-gray-700 text-gray-400'
                                                         }`}>
                                                         {credits[`week${w}`] || 0}
                                                     </div>
@@ -456,8 +456,8 @@ const SIWeeklyCredits = ({ language = 'en', currentUser }) => {
                                                     <div className="flex gap-1">
                                                         {[1, 2, 3, 4].map(w => (
                                                             <div key={w} className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${w === activeWeek ? 'bg-amber-500 text-white' :
-                                                                    credits[`week${w}`] > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
-                                                                        'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                                                                credits[`week${w}`] > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                                                                    'bg-gray-100 dark:bg-gray-700 text-gray-400'
                                                                 }`}>
                                                                 {credits[`week${w}`] || 0}
                                                             </div>

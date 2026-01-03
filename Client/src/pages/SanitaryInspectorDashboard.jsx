@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useLanguage } from '../context/LanguageContext';
 import { useClerk } from '@clerk/clerk-react';
@@ -23,13 +24,20 @@ const SanitaryInspectorDashboard = () => {
   const { signOut } = useClerk();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [userData, setUserData] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('verifiedUser');
-    if (storedUser) {
-      setUserData(JSON.parse(storedUser));
+    const storedUser = sessionStorage.getItem('verifiedUser');
+    if (!storedUser) {
+      navigate('/verify-employee');
+    } else {
+      try {
+        setUserData(JSON.parse(storedUser));
+      } catch (e) {
+        navigate('/verify-employee');
+      }
     }
-  }, []);
+  }, [navigate]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 

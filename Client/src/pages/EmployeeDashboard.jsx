@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -29,6 +30,7 @@ import autoTable from 'jspdf-autotable';
 const EmployeeDashboard = () => {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const navigate = useNavigate();
   const { language } = useLanguage();
   const [activeTab, setActiveTab] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -36,6 +38,23 @@ const EmployeeDashboard = () => {
   // Attendance state moved to top to prevent ReferenceError
   const [employeeId, setEmployeeId] = useState(null);
   const [userData, setUserData] = useState(null);
+
+  // Security Check & Data Loading
+  useEffect(() => {
+    const storedUser = sessionStorage.getItem('verifiedUser');
+    if (!storedUser) {
+      navigate('/verify-employee');
+    } else {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUserData(parsedUser);
+        if (parsedUser.employeeId) setEmployeeId(parsedUser.employeeId);
+      } catch (e) {
+        console.error("Session data corrupted");
+        navigate('/verify-employee');
+      }
+    }
+  }, [navigate]);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [locationVerified, setLocationVerified] = useState(false);
   const [distanceFromWard, setDistanceFromWard] = useState(null);
@@ -204,7 +223,7 @@ const EmployeeDashboard = () => {
 
   const fetchAttendancePerformance = async () => {
     try {
-      const storedData = localStorage.getItem('verifiedUser');
+      const storedData = sessionStorage.getItem('verifiedUser');
       if (!storedData) return;
 
       const userData = JSON.parse(storedData);
@@ -228,7 +247,7 @@ const EmployeeDashboard = () => {
 
   const fetchIssueCount = async () => {
     try {
-      const storedData = localStorage.getItem('verifiedUser');
+      const storedData = sessionStorage.getItem('verifiedUser');
       if (!storedData) return;
 
       const userData = JSON.parse(storedData);
