@@ -1,14 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Users, ClipboardList, CheckCircle, AlertTriangle, Activity,
-    TrendingUp, TrendingDown, Clock, MapPin
+    Users, CheckCircle, AlertTriangle,
+    Trophy, Star, Award, Loader
 } from 'lucide-react';
 import {
     PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 const SIOverview = ({ language }) => {
-    // Stats specific to Sanitation Inspector
+    const [topPerformers, setTopPerformers] = useState([]);
+    const [isLoadingPerformers, setIsLoadingPerformers] = useState(false);
+    const [wardNumber, setWardNumber] = useState(42); // Default ward, can be fetched from user data
+
+    // Fetch top performers based on credits
+    useEffect(() => {
+        const fetchTopPerformers = async () => {
+            setIsLoadingPerformers(true);
+            try {
+                // Get ward from localStorage or use default
+                let currentWard = wardNumber;
+                const storedData = localStorage.getItem('verifiedUser');
+                if (storedData) {
+                    const userData = JSON.parse(storedData);
+                    if (userData.Ward) {
+                        currentWard = userData.Ward;
+                        setWardNumber(userData.Ward);
+                    }
+                }
+
+                const response = await fetch(
+                    `${import.meta.env.VITE_BACKEND_URI}/credit/top-performers/${currentWard}?limit=5`
+                );
+                const data = await response.json();
+                if (data.success) {
+                    setTopPerformers(data.performers || []);
+                }
+            } catch (error) {
+                console.error('Error fetching top performers:', error);
+            } finally {
+                setIsLoadingPerformers(false);
+            }
+        };
+
+        fetchTopPerformers();
+    }, []);
+
+    // Stats specific to Sanitation Inspector (removed AVG QUALITY RATING)
     const stats = [
         {
             title: language === 'en' ? 'WARD EMPLOYEES' : 'वार्ड कर्मचारी',
@@ -34,14 +71,6 @@ const SIOverview = ({ language }) => {
             icon: CheckCircle,
             color: '#10b981' // Green
         },
-        {
-            title: language === 'en' ? 'AVG QUALITY RATING' : 'औसत गुणवत्ता रेटिंग',
-            value: '4.2',
-            change: '+0.1%',
-            trend: 'up',
-            icon: Activity,
-            color: '#3b82f6' // Blue
-        },
     ];
 
     // Issue Status Distribution
@@ -51,37 +80,6 @@ const SIOverview = ({ language }) => {
         { name: language === 'en' ? 'Critical' : 'महत्वपूर्ण', value: 10, color: '#ef4444' },
     ];
 
-    // Recent Activities (simulated real-time monitoring)
-    const recentActivities = [
-        {
-            action: language === 'en' ? "Garbage collection delayed at Block A" : "ब्लॉक ए में कचरा संग्रहण में देरी",
-            time: "10 mins ago",
-            icon: AlertTriangle,
-            color: "text-amber-500",
-            bg: "bg-amber-500/10"
-        },
-        {
-            action: language === 'en' ? "Rajesh Kumar marked attendance similar to geo-fence" : "राजेश कुमार ने जियो-फेंस के भीतर उपस्थिति दर्ज की",
-            time: "25 mins ago",
-            icon: MapPin,
-            color: "text-green-500",
-            bg: "bg-green-500/10"
-        },
-        {
-            action: language === 'en' ? "Issue #402 marked as Resolved" : "मुद्दा #402 हल किया गया",
-            time: "1 hour ago",
-            icon: CheckCircle,
-            color: "text-blue-500",
-            bg: "bg-blue-500/10"
-        },
-        {
-            action: language === 'en' ? "Quality check rating submitted for Team B" : "टीम बी के लिए गुणवत्ता जांच रेटिंग प्रस्तुत की गई",
-            time: "2 hours ago",
-            icon: ClipboardList,
-            color: "text-purple-500",
-            bg: "bg-purple-500/10"
-        },
-    ];
 
     return (
         <div className="space-y-6">
@@ -98,7 +96,7 @@ const SIOverview = ({ language }) => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {stats.map((stat, idx) => (
                     <div key={idx} className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800 hover:shadow-lg transition-all duration-300">
                         <div className="flex justify-between items-start">
@@ -127,26 +125,91 @@ const SIOverview = ({ language }) => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Recent Activity */}
+                {/* Top Performers of the Month */}
                 <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-200 dark:border-gray-800">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5">
-                        {language === 'en' ? 'Live Monitoring Log' : 'लाइव निगरानी लॉग'}
-                    </h3>
-                    <div className="space-y-4">
-                        {recentActivities.map((activity, idx) => (
-                            <div key={idx} className="flex items-start gap-3 pb-4 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-colors">
-                                <div className={`w-9 h-9 rounded-lg ${activity.bg} flex items-center justify-center flex-shrink-0`}>
-                                    <activity.icon size={18} className={activity.color} />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">{activity.action}</p>
-                                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                                        <Clock size={10} /> {activity.time}
-                                    </p>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="flex items-center justify-between mb-5">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Trophy className="text-amber-500" size={20} />
+                            {language === 'en' ? 'Top Performers of the Month' : 'महीने के शीर्ष कलाकार'}
+                        </h3>
+                        <button
+                            onClick={async () => {
+                                setIsLoadingPerformers(true);
+                                try {
+                                    const response = await fetch(
+                                        `${import.meta.env.VITE_BACKEND_URI}/credit/top-performers/${wardNumber}?limit=5`
+                                    );
+                                    const data = await response.json();
+                                    if (data.success) {
+                                        setTopPerformers(data.performers || []);
+                                    }
+                                } catch (error) {
+                                    console.error('Error fetching top performers:', error);
+                                } finally {
+                                    setIsLoadingPerformers(false);
+                                }
+                            }}
+                            className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        >
+                            {language === 'en' ? 'Refresh' : 'रीफ्रेश'}
+                        </button>
                     </div>
+                    {isLoadingPerformers ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader className="animate-spin text-gray-400" size={32} />
+                        </div>
+                    ) : topPerformers.length > 0 ? (
+                        <div className="space-y-4">
+                            {topPerformers.map((performer, idx) => (
+                                <div key={performer.employeeId} className="flex items-center gap-4 pb-4 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-3 rounded-lg transition-colors">
+                                    {/* Rank Badge */}
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                                        idx === 0 ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' :
+                                        idx === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800' :
+                                        idx === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700 text-white' :
+                                        'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                    }`}>
+                                        {idx === 0 ? <Trophy size={18} /> : idx + 1}
+                                    </div>
+                                    {/* Employee Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                                            {performer.name}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            {performer.employeeId} • {performer.role}
+                                        </p>
+                                    </div>
+                                    {/* Credit Score */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-right">
+                                            <p className="text-lg font-bold text-gray-900 dark:text-white">
+                                                {performer.totalCredits}
+                                            </p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                {language === 'en' ? 'Credits' : 'क्रेडिट'}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Star className="fill-amber-400 text-amber-400" size={20} />
+                                            <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                                                {performer.averageCredit}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <Award className="mx-auto text-gray-300 dark:text-gray-600 mb-3" size={48} />
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">
+                                {language === 'en' 
+                                    ? 'No performance data available for this month' 
+                                    : 'इस महीने के लिए कोई प्रदर्शन डेटा उपलब्ध नहीं है'}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Issue Distribution */}
