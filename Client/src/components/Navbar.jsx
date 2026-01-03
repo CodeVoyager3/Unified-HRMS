@@ -87,7 +87,7 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
                             <Menu size={24} />
                         </button>
                     )}
-                    <img src="/embelem.png" alt="State Emblem of India" className="h-10 md:h-14 object-contain brightness-100 dark:brightness-100" />
+                    <img src="/embelem.png" alt="State Emblem of India" className="h-10 md:h-14 object-contain brightness-100 dark:invert" />
                     <div className="h-8 md:h-10 w-[1px] bg-gray-300 dark:bg-gray-600 hidden sm:block"></div>
                     <div onClick={() => navigate('/')} className="cursor-pointer flex flex-col">
                         <img src="/logo.png" alt="MCD Logo" className="h-8 md:h-10 object-contain" />
