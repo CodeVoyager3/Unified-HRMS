@@ -17,23 +17,9 @@ const CityWideOverview = ({ language, onNavigate }) => {
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Mock Data for New Charts
-    const departmentTrends = [
-        { month: 'Jan', Sanitation: 85, Health: 78, Engineering: 65 },
-        { month: 'Feb', Sanitation: 82, Health: 80, Engineering: 68 },
-        { month: 'Mar', Sanitation: 88, Health: 75, Engineering: 72 },
-        { month: 'Apr', Sanitation: 86, Health: 82, Engineering: 75 },
-        { month: 'May', Sanitation: 90, Health: 85, Engineering: 70 },
-        { month: 'Jun', Sanitation: 92, Health: 88, Engineering: 78 },
-    ];
+    const [departmentTrends, setDepartmentTrends] = useState([]);
 
-    const budgetStats = [
-        { zone: 'Central', Allocated: 120, Spent: 95 },
-        { zone: 'South', Allocated: 150, Spent: 145 }, // High utilization
-        { zone: 'North', Allocated: 100, Spent: 40 },  // Low utilization
-        { zone: 'West', Allocated: 110, Spent: 115 },  // Over budget
-        { zone: 'East', Allocated: 90, Spent: 60 },
-    ];
+
 
     useEffect(() => {
         fetchCityData();
@@ -43,19 +29,22 @@ const CityWideOverview = ({ language, onNavigate }) => {
         setLoading(true);
         try {
             // Fetch all data in parallel
-            const [statsRes, zonesRes, alertsRes] = await Promise.all([
+            const [statsRes, zonesRes, alertsRes, trendsRes] = await Promise.all([
                 fetch(`${import.meta.env.VITE_BACKEND_URI}/analytics/city-stats`),
                 fetch(`${import.meta.env.VITE_BACKEND_URI}/analytics/zone-comparison`),
-                fetch(`${import.meta.env.VITE_BACKEND_URI}/analytics/alerts`)
+                fetch(`${import.meta.env.VITE_BACKEND_URI}/analytics/alerts`),
+                fetch(`${import.meta.env.VITE_BACKEND_URI}/analytics/city-trends`)
             ]);
 
             const statsData = await statsRes.json();
             const zonesData = await zonesRes.json();
             const alertsData = await alertsRes.json();
+            const trendsData = await trendsRes.json();
 
             if (statsData.success) setCityStats(statsData.stats);
             if (zonesData.success) setZoneComparison(zonesData.zones);
             if (alertsData.success) setAlerts(alertsData.alerts);
+            if (trendsData.success) setDepartmentTrends(trendsData.trends);
         } catch (error) {
             console.error('Error fetching city data:', error);
         } finally {
@@ -66,8 +55,8 @@ const CityWideOverview = ({ language, onNavigate }) => {
     const statCards = cityStats ? [
         {
             title: language === 'en' ? 'Revenue Collection' : 'राजस्व संग्रह',
-            value: '₹845 Cr', // Mocked for strategic relevance
-            change: '+12.5%',
+            value: cityStats.revenueCollection || '₹0',
+            change: '+2.5%', // Keep trend mock for now or calc if history exists
             trend: 'up',
             icon: IndianRupee,
             gradient: 'from-emerald-500 to-teal-600',
@@ -87,7 +76,7 @@ const CityWideOverview = ({ language, onNavigate }) => {
         {
             title: language === 'en' ? 'Avg Performance' : 'औसत प्रदर्शन',
             value: `${cityStats.averagePerformance || 0}%`,
-            change: cityStats.averagePerformance > 75 ? '+4.2%' : '-1.5%',
+            change: cityStats.averagePerformance > 75 ? '+1.2%' : '-0.5%',
             trend: cityStats.averagePerformance > 75 ? 'up' : 'down',
             icon: Activity,
             gradient: 'from-purple-500 to-fuchsia-600',
@@ -97,8 +86,8 @@ const CityWideOverview = ({ language, onNavigate }) => {
         {
             title: language === 'en' ? 'Pending Approvals' : 'लंबित अनुमोदन',
             value: cityStats.pendingApprovals || '0',
-            change: cityStats.pendingApprovals > 10 ? 'High' : 'Normal',
-            trend: cityStats.pendingApprovals > 10 ? 'up' : 'stable',
+            change: cityStats.pendingApprovals > 20 ? 'High' : 'Normal',
+            trend: cityStats.pendingApprovals > 20 ? 'up' : 'stable',
             icon: Clock,
             gradient: 'from-amber-500 to-orange-600',
             color: '#ea580c',
@@ -290,7 +279,7 @@ const CityWideOverview = ({ language, onNavigate }) => {
             </div>
 
             {/* NEW Charts Row - Strategic & Actions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
 
                 {/* Chart 1: Department Efficiency Timeline */}
                 <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
@@ -320,33 +309,7 @@ const CityWideOverview = ({ language, onNavigate }) => {
                     </div>
                 </div>
 
-                {/* Chart 2: Budget vs Expenditure */}
-                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                            {language === 'en' ? 'Budget vs. Expenditure (₹ Cr)' : 'बजट बनाम व्यय (₹ करोड़)'}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                            <span className="flex items-center text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-emerald-500 mr-1"></span>Allocated</span>
-                            <span className="flex items-center text-xs text-gray-500"><span className="w-2 h-2 rounded-full bg-red-500 mr-1"></span>Spent</span>
-                        </div>
-                    </div>
-                    <div className="h-[320px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={budgetStats} barGap={4}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} opacity={0.1} />
-                                <XAxis dataKey="zone" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} />
-                                <Tooltip
-                                    cursor={{ fill: 'transparent' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: '#1f2937', color: '#fff' }}
-                                />
-                                <Bar dataKey="Allocated" fill="#10b981" radius={[4, 4, 0, 0]} name="Allocated" />
-                                <Bar dataKey="Spent" fill="#ef4444" radius={[4, 4, 0, 0]} name="Spent" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
+
             </div>
         </div>
     );

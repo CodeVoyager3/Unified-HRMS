@@ -136,6 +136,19 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
                             {link.label}
                         </NavLink>
                     ))}
+                    {/* Dev Mode - Highlighted */}
+                    <NavLink
+                        to="/developer-mode"
+                        className={({ isActive }) => `relative transition-colors py-1 border-b-2 ${isActive
+                            ? 'text-orange-600 dark:text-orange-400 border-orange-600 dark:border-orange-400 font-bold'
+                            : 'border-transparent text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 hover:border-orange-500 font-semibold'
+                            }`}
+                    >
+                        <span className="flex items-center gap-1.5">
+                            Dev Mode
+                            <span className="text-[10px] bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">Beta</span>
+                        </span>
+                    </NavLink>
                 </div>
 
                 {/* Actions - Grouped for Clarity */}
@@ -179,6 +192,10 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
                     <NavLink to="/notices" className={({ isActive }) => `font-medium py-3 border-b border-gray-50 dark:border-gray-800 ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] bg-purple-50 dark:bg-purple-900/20 pl-2 rounded-r' : ''}`}>{t.publicNotices}</NavLink>
                     <div onClick={handleEmployeeCornerClick} className="font-medium py-3 border-b border-gray-50 dark:border-gray-800 flex justify-between cursor-pointer">{t.employeeCorner} <ChevronDown size={16} /></div>
                     <NavLink to="/about-us" className={({ isActive }) => `font-medium py-3 border-b border-gray-50 dark:border-gray-800 transition-all ${isActive ? 'text-[#6F42C1] dark:text-[#a074f0] bg-purple-50 dark:bg-purple-900/20 pl-2 rounded-r' : 'hover:pl-2'}`}>{t.aboutUs}</NavLink>
+                    {/* Dev Mode in Mobile */}
+                    <NavLink to="/developer-mode" className={({ isActive }) => `font-bold py-3 border-b border-gray-50 dark:border-gray-800 transition-all flex items-center gap-2 ${isActive ? 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 pl-2 rounded-r' : 'text-orange-500 dark:text-orange-400 hover:pl-2'}`}>
+                        Dev Mode <span className="text-[10px] bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold">BETA</span>
+                    </NavLink>
                     <div className="flex flex-col gap-3 mt-4">
                         <SignedIn>
                             <div className="flex justify-start px-2">

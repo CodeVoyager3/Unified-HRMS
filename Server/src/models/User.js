@@ -51,6 +51,13 @@ const userSchema = new mongoose.Schema({
     baseSalary: {
         type: Number,
         default: 45000 // Default base salary
+    },
+    isTemporary: {
+        type: Boolean,
+        default: false
+    },
+    temporaryExpiresAt: {
+        type: Date
     }
 });
 

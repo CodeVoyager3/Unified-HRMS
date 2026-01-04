@@ -1,19 +1,20 @@
 const mongoose = require('mongoose');
+require('dotenv').config({ path: './.env' });
 const Ward = require('./src/models/Ward');
+
 const fs = require('fs');
-require('dotenv').config();
-
-const run = async () => {
+async function listZones() {
     try {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGODB_URI);
         const zones = await Ward.distinct('zoneName');
-        fs.writeFileSync('zones_output.txt', JSON.stringify(zones, null, 2));
-        console.log("Zones written to zones_output.txt");
-    } catch (e) {
-        fs.writeFileSync('zones_output.txt', "Error: " + e.message);
+        fs.writeFileSync('zones_dump.txt', JSON.stringify(zones, null, 2));
+        console.log('Zones returned:', zones.length);
+    } catch (err) {
+        console.error(err);
+        fs.writeFileSync('zones_dump.txt', 'Error: ' + err.message);
     } finally {
-        mongoose.disconnect();
+        await mongoose.disconnect();
     }
-};
+}
 
-run();
+listZones();

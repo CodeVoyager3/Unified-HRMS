@@ -13,6 +13,7 @@ import EmployeeVerification from './pages/EmployeeVerification'
 import SanitaryInspectorDashboard from './pages/SanitaryInspectorDashboard'
 import RecruitmentPage from './pages/RecruitmentPage'
 import AuthorityDashboard from './pages/AuthorityDashboard'
+import DeveloperMode from './pages/DeveloperMode'
 import ChatAssistant from './components/ChatAssistant'
 
 
@@ -34,6 +35,7 @@ function App() {
           <Route path="/sanitary-inspector" element={<ProtectedRoute> <SanitaryInspectorDashboard /> </ProtectedRoute>} />
           <Route path="/notices" element={<Notices />} />
           <Route path="/about-us" element={<AboutUs />} />
+          <Route path="/developer-mode" element={<ProtectedRoute> <DeveloperMode /> </ProtectedRoute>} />
         </Routes>
         <ChatAssistant />
       </BrowserRouter>

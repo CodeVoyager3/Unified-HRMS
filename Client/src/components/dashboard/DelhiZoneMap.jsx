@@ -16,23 +16,26 @@ const DelhiZoneMap = ({ language = 'en', zoneStats = [] }) => {
 
     useEffect(() => {
         if (zoneStats && zoneStats.length > 0) {
+            // Helper to normalize names for comparison
+            const normalize = (str) => str ? str.toLowerCase().replace(/ zone/g, '').replace(/[^a-z0-9]/g, '') : '';
+
             // Merge static topology with real performance data
             const merged = zonePerformanceData.map(staticZone => {
-                // Find matching real data by zone name (assuming exact match or close enough)
-                const realData = zoneStats.find(z =>
-                    z.zone === staticZone.zone_name ||
-                    z.zone.includes(staticZone.short_name)
-                );
+                // Find matching real data by normalized name
+                const realData = zoneStats.find(z => {
+                    const nName = normalize(z.name);
+                    return nName === normalize(staticZone.zone_name) || nName.includes(normalize(staticZone.short_name));
+                });
 
                 if (realData) {
                     return {
                         ...staticZone,
-                        performance_score: realData.avgScore || 0,
-                        complaints_resolved: Math.round(realData.resolutionRate || 0),
-                        complaints_pending: realData.totalIssues - realData.resolvedIssues,
-                        sanitation_score: Math.round(realData.avgScore || 0), // Mock mapping for now if separate sanitation score missing
-                        revenue_collected: 100 + Math.floor(Math.random() * 50), // Mock if missing from API
-                        zone_name: realData.zone // Use backend name preference
+                        performance_score: realData.attendance || 0, // Using attendance as proxy for performance score
+                        complaints_resolved: realData.resolutionRate || 0,
+                        complaints_pending: realData.pendingIssues || 0,
+                        sanitation_score: realData.attendance || 0,
+                        revenue_collected: (realData.revenue / 10000000).toFixed(2), // Convert raw to Crores
+                        zone_name: realData.name // Use backend name preference
                     };
                 }
                 return staticZone;

@@ -44,6 +44,9 @@ app.use("/commissioner", require('./src/routes/commissioner-grievances'));
 app.use("/commissioner", require('./src/routes/commissioner-inventory'));
 app.use("/commissioner", require('./src/routes/commissioner-dc'));
 
+// Developer Mode Routes
+app.use("/developer", require('./src/routes/developerRoutes'));
+
 app.listen(PORT, async () => {
     console.log(`Server running on port http://localhost:${PORT}`);
 
