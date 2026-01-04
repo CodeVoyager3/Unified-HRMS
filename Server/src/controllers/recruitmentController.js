@@ -1,6 +1,8 @@
 const Recruitment = require('../models/Recruitment');
 const Candidate = require('../models/Candidate');
 const Ward = require('../models/Ward');
+const User = require('../models/User');
+const DCPerformance = require('../models/DCPerformance');
 
 // Dummy Data Configuration
 const DUMMY_EXAMS = [
@@ -68,6 +70,77 @@ const seedDatabase = async () => {
         await Candidate.insertMany(DUMMY_CANDIDATES);
 
         console.log("Database Seeded with Permanent Data (Amritesh)");
+
+        // --- Seed Deputy Commissioners ---
+        const existingDCs = await User.countDocuments({ role: 'Deputy Commissioner' });
+        if (existingDCs === 0) {
+            console.log("Seeding Deputy Commissioners...");
+            const dummyDCs = [
+                {
+                    name: "Rajesh Kumar",
+                    employeeId: "DC-001",
+                    email: "rajesh.kumar@mcd.gov.in",
+                    role: "Deputy Commissioner",
+                    department: "Head Office",
+                    Zone: "Narela Zone",
+                    employmentStatus: "Permanent",
+                    joiningDate: "2015-06-01"
+                },
+                {
+                    name: "Sneha Gupta",
+                    employeeId: "DC-002",
+                    email: "sneha.gupta@mcd.gov.in",
+                    role: "Deputy Commissioner",
+                    department: "Head Office",
+                    Zone: "Rohini Zone",
+                    employmentStatus: "Permanent",
+                    joiningDate: "2018-03-15"
+                },
+                {
+                    name: "Vikram Singh",
+                    employeeId: "DC-003",
+                    email: "vikram.singh@mcd.gov.in",
+                    role: "Deputy Commissioner",
+                    department: "Head Office",
+                    Zone: "South Zone",
+                    employmentStatus: "Permanent",
+                    joiningDate: "2016-11-20"
+                },
+                {
+                    name: "Anjali Mehta",
+                    employeeId: "DC-004",
+                    email: "anjali.mehta@mcd.gov.in",
+                    role: "Deputy Commissioner",
+                    department: "Head Office",
+                    Zone: "Karol Bagh Zone",
+                    employmentStatus: "Contractual",
+                    joiningDate: "2020-01-10"
+                }
+            ];
+
+            const createdDCs = await User.insertMany(dummyDCs);
+
+            // Seed Performance for current month
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const performances = createdDCs.map(dc => ({
+                dcId: dc._id,
+                dcName: dc.name,
+                month: currentMonth,
+                zone: dc.Zone,
+                performanceScore: Math.floor(70 + Math.random() * 25),
+                grievancesResolved: Math.floor(50 + Math.random() * 100),
+                grievancesTotal: Math.floor(150 + Math.random() * 50),
+                staffManagement: Math.floor(75 + Math.random() * 20),
+                budgetCompliance: Math.floor(80 + Math.random() * 20),
+                wardsManaged: Math.floor(4 + Math.random() * 4),
+                averageWardScore: Math.floor(65 + Math.random() * 25),
+                resolutionRate: Math.floor(70 + Math.random() * 20)
+            }));
+
+            await DCPerformance.insertMany(performances);
+            console.log(`Seeded ${createdDCs.length} Deputy Commissioners and Performance`);
+        }
+
         return { success: true, exams: DUMMY_EXAMS, candidates: DUMMY_CANDIDATES };
     } catch (error) {
         console.error("Auto-Seed Error:", error);
@@ -188,7 +261,7 @@ exports.checkApplicationByEmail = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
-const User = require('../models/User');
+// User model already imported at top
 
 // ... existing code ...
 

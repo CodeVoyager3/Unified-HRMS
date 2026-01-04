@@ -28,11 +28,6 @@ const WardProgressMap = ({ language = 'en', userZone = 'Rohini Zone' }) => {
                         zone: ward.zoneName,
                         lat: ward.latitude,
                         lng: ward.longitude,
-                        id: parseInt(ward.wardNumber),
-                        name: ward.wardName,
-                        zone: ward.zoneName,
-                        lat: ward.latitude,
-                        lng: ward.longitude,
                         // Data from Real API
                         score: ward.score,
                         sanitation: ward.sanitation,

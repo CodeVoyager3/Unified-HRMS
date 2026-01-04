@@ -46,6 +46,17 @@ const EmployeeIssueSchema = mongoose.Schema({
         type: String,
         enum: ['General', 'Vector Control', 'Drainage', 'Garbage'],
         default: 'General'
+    },
+    // Commissioner Escalation
+    escalatedToCommissioner: {
+        type: Boolean,
+        default: false
+    },
+    commissionerNotes: {
+        type: String
+    },
+    escalationDate: {
+        type: Date
     }
 })
 

@@ -37,6 +37,13 @@ app.use("/api/verification", require('./src/routes/verificationRoutes'));
 app.use("/deputy", require('./src/routes/deputy'));
 app.use("/analytics", require('./src/routes/analyticsRoutes'));
 
+// Commissioner Routes
+app.use("/analytics", require('./src/routes/analytics'));
+app.use("/commissioner", require('./src/routes/commissioner-approvals'));
+app.use("/commissioner", require('./src/routes/commissioner-grievances'));
+app.use("/commissioner", require('./src/routes/commissioner-inventory'));
+app.use("/commissioner", require('./src/routes/commissioner-dc'));
+
 app.listen(PORT, async () => {
     console.log(`Server running on port http://localhost:${PORT}`);
 

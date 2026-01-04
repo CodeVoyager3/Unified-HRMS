@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import { ChevronDown, Moon, Sun, Accessibility, Menu, X, Languages } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -11,9 +11,18 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
     const { user, isSignedIn } = useUser();
     const { openSignIn } = useClerk();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
     const { language, toggleLanguage, t } = useLanguage();
     const { increaseFontSize, decreaseFontSize, resetFontSize } = useFontSize();
     const { theme, setTheme } = useTheme();
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 20);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     const toggleTheme = () => {
         setTheme(theme === 'dark' ? 'light' : 'dark');
@@ -29,9 +38,9 @@ const Navbar = ({ onSidebarToggle, alwaysShowToggle }) => {
     };
 
     return (
-        <nav className="w-full sticky top-0 z-50 shadow-md font-sans dark:shadow-gray-800 transition-colors duration-300" role="navigation" aria-label="Main Navigation">
-            {/* Top Bar - GIGW Compliant */}
-            <div className="bg-[#6F42C1] text-white px-4 py-1.5 flex justify-between items-center text-xs md:text-sm dark:bg-[#5a32a3]">
+        <nav className={`w-full sticky top-0 z-50 shadow-md font-sans dark:shadow-gray-800 transition-all duration-300 ease-in-out`} role="navigation" aria-label="Main Navigation">
+            {/* Top Bar - GIGW Compliant - Hides on Scroll */}
+            <div className={`bg-[#6F42C1] text-white px-4 flex justify-between items-center text-xs md:text-sm dark:bg-[#5a32a3] transition-all duration-300 ease-in-out overflow-hidden ${isScrolled ? 'h-0 opacity-0' : 'h-8 py-1.5 opacity-100'}`}>
                 <div className="flex items-center gap-2">
                     <img src="/flag.png" alt="Indian Tricolor" className="h-4 w-auto object-contain" />
                     <a href="https://india.gov.in" target="_blank" rel="noreferrer" className="hover:underline font-medium flex items-center gap-1" aria-label="Government of India - External site that opens in a new window">
