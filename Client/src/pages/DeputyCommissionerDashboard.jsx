@@ -156,7 +156,9 @@ const DeputyCommissionerDashboard = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-white">{language === 'en' ? 'Recruitment' : 'भर्ती'}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{language === 'en' ? '5 Pending Reviews' : '5 समीक्षा लंबित'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {loadingStats ? '...' : (language === 'en' ? `${zoneStats.pendingRecruitment || 0} Pending Reviews` : `${zoneStats.pendingRecruitment || 0} समीक्षा लंबित`)}
+                    </p>
                   </div>
                 </button>
 
@@ -182,7 +184,9 @@ const DeputyCommissionerDashboard = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900 dark:text-white">{language === 'en' ? 'Grievances' : 'शिकायतें'}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{language === 'en' ? '8 Unresolved' : '8 अनसुलझा'}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {loadingStats ? '...' : (language === 'en' ? `${zoneStats.unresolvedGrievances || 0} Unresolved` : `${zoneStats.unresolvedGrievances || 0} अनसुलझा`)}
+                    </p>
                   </div>
                 </button>
               </div>

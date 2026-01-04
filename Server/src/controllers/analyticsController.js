@@ -59,13 +59,24 @@ exports.getZoneStats = async (req, res) => {
         // Weighted Average: 40% Compliance, 40% Grievance, 20% Recruitment
         const zonePerformance = Math.round((complianceScore * 0.4) + (grievanceScore * 0.4) + (recruitmentScore * 0.2));
 
+        // D. Specific Counts for Dashboard "Quick Access"
+        const pendingRecruitment = await User.countDocuments({
+            Zone: { $in: uniqueVariations },
+            employmentStatus: 'Interview Pending' // Or whatever status is "Pending Review"
+        });
+
+        // E. Unresolved Grievances (Total - Resolved)
+        const unresolvedGrievances = totalIssues - resolvedIssues;
+
         res.status(200).json({
             success: true,
             stats: {
                 totalWards,
                 activeStaff,
-                pendingApprovals,
-                zonePerformance
+                pendingApprovals: pendingApprovals, // This was generic pending, now specific
+                zonePerformance,
+                pendingRecruitment,
+                unresolvedGrievances
             }
         });
     } catch (error) {
